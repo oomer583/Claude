@@ -1,0 +1,73 @@
+:root {
+  --ink: #17221d;
+  --paper: #f3f0e8;
+  --mist: #dbe5db;
+  --sage: #91a696;
+  --line: rgba(23, 34, 29, 0.18);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--paper);
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+.nav {
+  height: 88px;
+  padding: 0 clamp(24px, 5vw, 76px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  letter-spacing: .04em;
+}
+.brand { display: flex; gap: 12px; align-items: center; text-decoration: none; font-weight: 700; }
+.brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid; border-radius: 50%; font-family: Georgia, serif; font-style: italic; }
+.phase { color: #607069; text-transform: uppercase; font-size: 10px; letter-spacing: .18em; }
+.hero {
+  position: relative;
+  overflow: hidden;
+  min-height: 690px;
+  padding: 100px clamp(24px, 8vw, 130px) 92px;
+  border-bottom: 1px solid var(--line);
+}
+.eyebrow { display: flex; align-items: center; gap: 12px; margin: 0 0 50px; font-size: 10px; letter-spacing: .18em; text-transform: uppercase; }
+.eyebrow span { width: 30px; height: 1px; background: var(--ink); }
+h1, h2 { font-family: Georgia, "Times New Roman", serif; font-weight: 400; letter-spacing: -.045em; }
+h1 { position: relative; z-index: 1; max-width: 830px; margin: 0; font-size: clamp(60px, 8.7vw, 132px); line-height: .87; }
+h1 em { font-weight: 400; color: #778f80; }
+.intro { position: relative; z-index: 1; max-width: 480px; margin: 54px 0 36px; font-size: 17px; line-height: 1.65; color: #526159; }
+.actions { position: relative; z-index: 1; display: flex; align-items: center; gap: 30px; font-size: 12px; }
+.primary { display: inline-flex; align-items: center; gap: 32px; padding: 16px 19px; color: var(--paper); background: var(--ink); text-decoration: none; }
+.secondary { text-underline-offset: 5px; }
+.orb { position: absolute; width: min(45vw, 580px); aspect-ratio: 1; right: -5%; top: 7%; border-radius: 50%; background: radial-gradient(circle at 38% 35%, #f8f6ef 0, #c9d8ca 25%, #8ba28f 52%, #41584c 76%, #17251e 100%); filter: blur(.2px); opacity: .86; box-shadow: inset 25px 20px 60px rgba(255,255,255,.6), 0 35px 90px rgba(40,65,50,.18); }
+.orb::after { content: ""; position: absolute; inset: 10%; border-radius: 50%; border: 1px solid rgba(255,255,255,.25); filter: blur(2px); }
+.capabilities { padding: 120px clamp(24px, 8vw, 130px); }
+.section-heading { display: grid; grid-template-columns: 1fr 2fr; gap: 70px; align-items: start; }
+.section-heading > p { margin: 10px 0; color: #68766f; font-size: 12px; line-height: 1.5; text-transform: uppercase; letter-spacing: .1em; }
+.section-heading h2 { margin: 0; font-size: clamp(44px, 6vw, 84px); line-height: .95; }
+.capability-grid { display: grid; grid-template-columns: repeat(3, 1fr); margin: 110px 0 20px; border-top: 1px solid var(--line); }
+.capability-grid article { min-height: 230px; padding: 24px 35px 20px 0; border-right: 1px solid var(--line); }
+.capability-grid article + article { padding-left: 35px; }
+.capability-grid article:last-child { border-right: 0; }
+.capability-grid span { color: #7c8a83; font-size: 10px; letter-spacing: .14em; }
+.capability-grid h3 { margin: 55px 0 16px; font: 400 26px Georgia, serif; }
+.capability-grid p { max-width: 260px; color: #607068; font-size: 13px; line-height: 1.7; }
+.closing { padding: 130px 24px; text-align: center; background: var(--mist); }
+.closing > p, .closing > span { text-transform: uppercase; font-size: 10px; letter-spacing: .18em; color: #6c7c73; }
+.closing h2 { margin: 35px auto 50px; font-size: clamp(48px, 7vw, 96px); line-height: .95; }
+@media (max-width: 760px) {
+  .hero { min-height: 690px; padding-top: 70px; }
+  .orb { width: 390px; right: -190px; top: 100px; opacity: .55; }
+  .intro { max-width: 340px; }
+  .section-heading { grid-template-columns: 1fr; gap: 30px; }
+  .capability-grid { grid-template-columns: 1fr; margin-top: 70px; }
+  .capability-grid article, .capability-grid article + article { padding: 26px 0; border-right: 0; border-bottom: 1px solid var(--line); }
+  .capability-grid h3 { margin-top: 30px; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }

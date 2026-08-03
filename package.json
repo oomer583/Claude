@@ -1,0 +1,29 @@
+{
+  "name": "ai-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "npm@11.6.2",
+  "workspaces": [
+    "packages/shared",
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "build": "npm run build -w @ai-workspace/shared && npm run build -w @ai-workspace/api && npm run build -w @ai-workspace/web",
+    "dev": "npm run dev -w @ai-workspace/api & npm run dev -w @ai-workspace/web & wait",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "npm run typecheck -w @ai-workspace/shared && npm run typecheck -w @ai-workspace/api && npm run typecheck -w @ai-workspace/web",
+    "test": "npm run build -w @ai-workspace/shared && npm run test -w @ai-workspace/api"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.32.0",
+    "eslint": "^9.32.0",
+    "globals": "^16.3.0",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.39.0"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  }
+}
