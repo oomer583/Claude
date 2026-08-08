@@ -75,7 +75,7 @@ docker compose up -d
 
 Caddy obtains and renews HTTPS automatically when the hostname resolves to the server and ports 80/443 are reachable. The raw Next.js port is bound to `127.0.0.1` only; public traffic goes through Caddy.
 
-## 5. Final smoke test
+## 5. Health and product-surface smoke tests
 
 Local app port:
 
@@ -87,9 +87,35 @@ Public HTTPS hostname:
 
 ```bash
 APP_URL=https://my-ai.example.org pnpm deploy:smoke
+SITE_URL=https://my-ai.example.org pnpm deploy:features
 ```
 
-The smoke test checks `/api/health/live` and `/api/health/ready`. Readiness includes PostgreSQL, Redis, 9Router, and Onyx.
+The health smoke test checks `/api/health/live` and `/api/health/ready`. Readiness includes PostgreSQL, Redis, 9Router, and Onyx. The product-surface smoke test verifies that the main public/authenticated routes exist and do not return 404/5xx responses.
+
+## 6. Authenticated functional verification
+
+Sign in through the browser, open Developer Tools, and copy the full `Cookie` request-header value from any authenticated request. Run the read-only verification first:
+
+```bash
+SITE_URL=https://my-ai.example.org \
+E2E_SESSION_COOKIE='authjs.session-token=...; other-cookie=...' \
+pnpm deploy:functional
+```
+
+The read-only pass verifies the authenticated usage snapshot, memory read path, connector discovery, project list, and account export. It also checks that account export does not contain password or encrypted workspace credentials.
+
+To perform real active probes against the configured services, opt in explicitly:
+
+```bash
+SITE_URL=https://my-ai.example.org \
+E2E_SESSION_COOKIE='authjs.session-token=...; other-cookie=...' \
+E2E_ACTIVE=1 \
+pnpm deploy:functional
+```
+
+Active mode runs a small real web search, isolated Python execution, PDF generation plus generated-file URL reachability, and a small deep-research request. It then fetches `/api/usage` again and verifies that Redis-backed counters increased for every exercised resource. Active probes consume the same quota and upstream resources as normal product use.
+
+Never commit the copied session cookie or put it in shell history on a shared machine.
 
 ## Useful commands
 

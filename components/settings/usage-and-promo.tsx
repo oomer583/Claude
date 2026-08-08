@@ -13,6 +13,9 @@ import { Button } from "@/components/ui/button";
 
 type QuotaRule = {
   limit: number;
+  remaining: number;
+  resetAt: string | null;
+  used: number;
   windowSeconds: number;
 };
 
@@ -42,6 +45,17 @@ function formatWindow(seconds: number) {
     return `${seconds / (60 * 60)} hour`;
   }
   return `${seconds} seconds`;
+}
+
+function formatResetAt(value: string | null) {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toLocaleString();
 }
 
 export function UsageAndPromo() {
@@ -205,20 +219,34 @@ export function UsageAndPromo() {
           </div>
         ) : (
           <div className="mt-5 grid gap-2 sm:grid-cols-2">
-            {sortedLimits.map(([resource, rule]) => (
-              <div
-                className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3"
-                key={resource}
-              >
-                <p className="font-medium text-sm">
-                  {RESOURCE_LABELS[resource] ?? resource}
-                </p>
-                <p className="mt-1 text-muted-foreground text-xs">
-                  {rule.limit.toLocaleString()} per{" "}
-                  {formatWindow(rule.windowSeconds)}
-                </p>
-              </div>
-            ))}
+            {sortedLimits.map(([resource, rule]) => {
+              const resetAt = formatResetAt(rule.resetAt);
+              return (
+                <div
+                  className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3"
+                  key={resource}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-medium text-sm">
+                      {RESOURCE_LABELS[resource] ?? resource}
+                    </p>
+                    <span className="text-muted-foreground text-xs">
+                      {rule.remaining.toLocaleString()} left
+                    </span>
+                  </div>
+                  <p className="mt-1 text-muted-foreground text-xs">
+                    {rule.used.toLocaleString()} used of{" "}
+                    {rule.limit.toLocaleString()} per{" "}
+                    {formatWindow(rule.windowSeconds)}
+                  </p>
+                  {resetAt ? (
+                    <p className="mt-1 text-muted-foreground/80 text-xs">
+                      Resets {resetAt}
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
