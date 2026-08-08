@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronUp } from "lucide-react";
+import { ChevronUp, SettingsIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { User } from "next-auth";
 import { signOut, useSession } from "next-auth/react";
@@ -59,6 +59,10 @@ export function SidebarUserNav({ user }: { user: User }) {
     }
   }, [isGuest, router, status]);
 
+  const handleSettingsClick = useCallback(() => {
+    router.push("/settings");
+  }, [router]);
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -99,6 +103,16 @@ export function SidebarUserNav({ user }: { user: User }) {
             data-testid="user-nav-menu"
             side="top"
           >
+            {!isGuest ? (
+              <DropdownMenuItem
+                className="cursor-pointer text-[13px]"
+                onSelect={handleSettingsClick}
+              >
+                <SettingsIcon className="size-3.5" />
+                Plan & usage
+              </DropdownMenuItem>
+            ) : null}
+            {!isGuest ? <DropdownMenuSeparator /> : null}
             <DropdownMenuItem
               className="cursor-pointer text-[13px]"
               data-testid="user-nav-item-theme"
