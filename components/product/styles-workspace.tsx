@@ -64,7 +64,11 @@ export function StylesWorkspace() {
           method,
         });
         if (!response.ok) {
-          toast.error(method === "PATCH" ? "Could not activate style" : "Could not delete style");
+          toast.error(
+            method === "PATCH"
+              ? "Could not activate style"
+              : "Could not delete style"
+          );
           return;
         }
         await loadStyles();
@@ -77,8 +81,7 @@ export function StylesWorkspace() {
 
   const handleStyleAction = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
-      const id = event.currentTarget.dataset.id;
-      const action = event.currentTarget.dataset.action;
+      const { action, id } = event.currentTarget.dataset;
       if (!(id && (action === "activate" || action === "delete"))) {
         return;
       }
@@ -89,21 +92,30 @@ export function StylesWorkspace() {
     [mutateStyle]
   );
 
-  const handleNameChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    setName(event.target.value);
-  }, []);
+  const handleNameChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setName(event.target.value);
+    },
+    []
+  );
 
-  const handleInstructionsChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
-    setInstructions(event.target.value);
-  }, []);
+  const handleInstructionsChange = useCallback(
+    (event: ChangeEvent<HTMLTextAreaElement>) => {
+      setInstructions(event.target.value);
+    },
+    []
+  );
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-5 py-10 md:px-8">
       <div>
         <p className="text-muted-foreground text-sm">Customize</p>
-        <h1 className="mt-1 font-semibold text-2xl tracking-tight">Custom styles</h1>
+        <h1 className="mt-1 font-semibold text-2xl tracking-tight">
+          Custom styles
+        </h1>
         <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
-          Create named response personalities and make one active. The active style is injected server-side into normal chats.
+          Create named response personalities and make one active. The active
+          style is injected server-side into normal chats.
         </p>
       </div>
 
@@ -122,7 +134,11 @@ export function StylesWorkspace() {
             placeholder="Example: Be concise, practical, and use short headings only when useful."
             value={instructions}
           />
-          <Button className="mt-3" disabled={busy || !name.trim() || !instructions.trim()} onClick={createStyle}>
+          <Button
+            className="mt-3"
+            disabled={busy || !name.trim() || !instructions.trim()}
+            onClick={createStyle}
+          >
             Create style
           </Button>
         </div>
@@ -131,26 +147,49 @@ export function StylesWorkspace() {
           <h2 className="font-medium text-sm">Saved styles</h2>
           <div className="mt-4 flex flex-col gap-3">
             {styles.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No custom styles yet.</p>
+              <p className="text-muted-foreground text-sm">
+                No custom styles yet.
+              </p>
             ) : (
               styles.map((style) => (
-                <div className="rounded-xl border border-border/60 bg-muted/20 p-4" key={style.id}>
+                <div
+                  className="rounded-xl border border-border/60 bg-muted/20 p-4"
+                  key={style.id}
+                >
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="font-medium text-sm">{style.name}</p>
-                      <p className="mt-1 line-clamp-3 text-muted-foreground text-xs">{style.instructions}</p>
+                      <p className="mt-1 line-clamp-3 text-muted-foreground text-xs">
+                        {style.instructions}
+                      </p>
                     </div>
                     {style.isActive ? (
-                      <span className="rounded-full border px-2 py-1 text-[11px]">Active</span>
+                      <span className="rounded-full border px-2 py-1 text-[11px]">
+                        Active
+                      </span>
                     ) : null}
                   </div>
                   <div className="mt-3 flex gap-2">
-                    {!style.isActive ? (
-                      <Button data-action="activate" data-id={style.id} disabled={busy} onClick={handleStyleAction} size="sm" variant="outline">
+                    {style.isActive ? null : (
+                      <Button
+                        data-action="activate"
+                        data-id={style.id}
+                        disabled={busy}
+                        onClick={handleStyleAction}
+                        size="sm"
+                        variant="outline"
+                      >
                         Activate
                       </Button>
-                    ) : null}
-                    <Button data-action="delete" data-id={style.id} disabled={busy} onClick={handleStyleAction} size="sm" variant="ghost">
+                    )}
+                    <Button
+                      data-action="delete"
+                      data-id={style.id}
+                      disabled={busy}
+                      onClick={handleStyleAction}
+                      size="sm"
+                      variant="ghost"
+                    >
                       Delete
                     </Button>
                   </div>
