@@ -41,6 +41,10 @@ import {
 } from "@/lib/db/queries";
 import type { DBMessage } from "@/lib/db/schema";
 import { ChatbotError } from "@/lib/errors";
+import {
+  formatProjectContextForPrompt,
+  retrieveProjectContext,
+} from "@/lib/orchestration/project-context";
 import { checkIpRateLimit } from "@/lib/ratelimit";
 import type { ChatMessage, WaitingStatusData } from "@/lib/types";
 import { convertToUIMessages, generateUUID } from "@/lib/utils";
@@ -55,6 +59,18 @@ function isModelStreamActivity(chunk: { type: string }) {
   return !["start", "start-step", "finish-step", "finish", "raw"].includes(
     chunk.type
   );
+}
+
+function getUserMessageText(message: PostRequestBody["message"]) {
+  if (!message) {
+    return "";
+  }
+
+  return message.parts
+    .filter((part) => part.type === "text")
+    .map((part) => part.text)
+    .join("\n")
+    .trim();
 }
 
 function getStreamContext() {
@@ -78,8 +94,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { id, message, messages, selectedChatModel, selectedVisibilityType } =
-      requestBody;
+    const {
+      id,
+      message,
+      messages,
+      projectId,
+      selectedChatModel,
+      selectedVisibilityType,
+    } = requestBody;
 
     const [botIdResult, session] = await Promise.all([
       checkBotId().catch(() => null),
@@ -116,11 +138,16 @@ export async function POST(request: Request) {
     const chat = await getChatById({ id });
     let messagesFromDb: DBMessage[] = [];
     let titlePromise: Promise<string> | null = null;
+    let effectiveProjectId = projectId ?? null;
 
     if (chat) {
       if (chat.userId !== session.user.id) {
         return new ChatbotError("forbidden:chat").toResponse();
       }
+      if (projectId && chat.projectId && chat.projectId !== projectId) {
+        return new ChatbotError("forbidden:chat").toResponse();
+      }
+      effectiveProjectId = projectId ?? chat.projectId ?? null;
       messagesFromDb = await getMessagesByChatId({ id });
     } else if (message?.role === "user") {
       await saveChat({
@@ -179,6 +206,25 @@ export async function POST(request: Request) {
       longitude,
     };
 
+    let projectContextPrompt: string | null = null;
+    if (effectiveProjectId && message?.role === "user") {
+      const userMessageText = getUserMessageText(message);
+      if (userMessageText) {
+        const projectContext = await retrieveProjectContext({
+          chatId: id,
+          message: userMessageText,
+          projectId: effectiveProjectId,
+          userId: session.user.id,
+        });
+
+        if (!projectContext) {
+          return new ChatbotError("forbidden:chat").toResponse();
+        }
+
+        projectContextPrompt = formatProjectContextForPrompt(projectContext);
+      }
+    }
+
     if (message?.role === "user") {
       await saveMessages({
         messages: [
@@ -201,6 +247,10 @@ export async function POST(request: Request) {
     const supportsTools = capabilities?.tools === true;
 
     const modelMessages = await convertToModelMessages(uiMessages);
+    const baseInstructions = systemPrompt({ requestHints, supportsTools });
+    const instructions = projectContextPrompt
+      ? `${baseInstructions}\n\n${projectContextPrompt}`
+      : baseInstructions;
 
     const stream = createUIMessageStream({
       execute: async ({ writer: dataStream }) => {
@@ -277,7 +327,7 @@ export async function POST(request: Request) {
                   "updateDocument",
                   "requestSuggestions",
                 ],
-          instructions: systemPrompt({ requestHints, supportsTools }),
+          instructions,
           messages: modelMessages,
           model: getLanguageModel(chatModel),
           onAbort() {
@@ -388,17 +438,7 @@ export async function POST(request: Request) {
           });
         }
       },
-      onError: (error) => {
-        if (
-          error instanceof Error &&
-          error.message?.includes(
-            "AI Gateway requires a valid credit card on file to service requests"
-          )
-        ) {
-          return "AI Gateway requires a valid credit card on file to service requests. Please visit https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%3Fmodal%3Dadd-credit-card to add a card and unlock your free credits.";
-        }
-        return "Oops, an error occurred!";
-      },
+      onError: () => "Oops, an error occurred!",
       originalMessages: isToolApprovalFlow ? uiMessages : undefined,
     });
 
@@ -428,15 +468,6 @@ export async function POST(request: Request) {
 
     if (error instanceof ChatbotError) {
       return error.toResponse();
-    }
-
-    if (
-      error instanceof Error &&
-      error.message?.includes(
-        "AI Gateway requires a valid credit card on file to service requests"
-      )
-    ) {
-      return new ChatbotError("bad_request:activate_gateway").toResponse();
     }
 
     console.error("Unhandled error in chat API:", error, { vercelId });
