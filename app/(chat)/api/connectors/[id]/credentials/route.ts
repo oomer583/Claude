@@ -8,10 +8,12 @@ import {
 } from "@/lib/integrations/onyx/mcp";
 
 const bodySchema = z.object({
-  credentials: z.record(z.string(), z.string().min(1)).refine(
-    (value) => Object.keys(value).length > 0,
-    "At least one credential is required"
-  ),
+  credentials: z
+    .record(z.string(), z.string().min(1))
+    .refine(
+      (value) => Object.keys(value).length > 0,
+      "At least one credential is required"
+    ),
   transport: z.enum(["STREAMABLE_HTTP", "SSE"]).default("STREAMABLE_HTTP"),
 });
 
