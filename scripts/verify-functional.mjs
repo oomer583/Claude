@@ -106,6 +106,16 @@ async function verifyReadOnlySurfaces() {
     Array.isArray(projects),
     "Projects endpoint did not return an array"
   );
+  const styles = assertOk("style list", await request("/api/styles"));
+  assertShape(Array.isArray(styles), "Styles endpoint did not return an array");
+  const historySearch = assertOk(
+    "past chat search",
+    await request("/api/history/search?q=functional")
+  );
+  assertShape(
+    Array.isArray(historySearch),
+    "Chat search endpoint did not return an array"
+  );
   const account = assertOk("account export", await request("/api/account"));
   assertShape(
     account?.account?.id,
@@ -176,12 +186,40 @@ async function verifyFileGeneration() {
     urls.length > 0,
     "File generation returned no downloadable HTTP(S) URL"
   );
-  const download = await fetch(urls[0], { redirect: "manual" });
+  const download = await fetch(urls[0], { redirect: "follow" });
   assertShape(
     download.status >= 200 && download.status < 400,
     `Generated file URL was not reachable (HTTP ${download.status})`
   );
   console.log(`OK generated file download (${download.status})`);
+  return {
+    blob: await download.blob(),
+    url: urls[0],
+  };
+}
+
+async function verifyFileEditing(generated) {
+  const form = new FormData();
+  form.append("file", generated.blob, "functional-e2e.pdf");
+  form.append(
+    "instructions",
+    "Add the exact text functional-e2e-edited-ok to the existing PDF while preserving the original content."
+  );
+  const body = assertOk(
+    "PDF editing",
+    await request("/api/files/edit", { body: form, method: "POST" })
+  );
+  const urls = extractHttpUrls(body?.answer);
+  assertShape(
+    urls.length > 0,
+    "File editing returned no downloadable HTTP(S) URL"
+  );
+  const download = await fetch(urls[0], { redirect: "follow" });
+  assertShape(
+    download.status >= 200 && download.status < 400,
+    `Edited file URL was not reachable (HTTP ${download.status})`
+  );
+  console.log(`OK edited file download (${download.status})`);
 }
 
 async function verifyResearch({ expect429 = false } = {}) {
@@ -243,6 +281,25 @@ async function verifyWorkspaceLifecycle() {
     "Uploaded file not listed"
   );
 
+  const style = assertOk(
+    "style create",
+    await request("/api/styles", {
+      body: JSON.stringify({
+        instructions: `When useful, acknowledge marker ${marker}.`,
+        name: marker,
+      }),
+      method: "POST",
+    })
+  );
+  assertShape(style?.id, "Style creation returned no id");
+  assertOk(
+    "style activate",
+    await request("/api/styles", {
+      body: JSON.stringify({ id: style.id }),
+      method: "PATCH",
+    })
+  );
+
   const memoryText = `My temporary verification marker is ${marker}`;
   assertOk(
     "memory write",
@@ -262,6 +319,13 @@ async function verifyWorkspaceLifecycle() {
     "memory cleanup",
     await request("/api/memories", {
       body: JSON.stringify({ memory: memoryText }),
+      method: "DELETE",
+    })
+  );
+  assertOk(
+    "style cleanup",
+    await request("/api/styles", {
+      body: JSON.stringify({ id: style.id }),
       method: "DELETE",
     })
   );
@@ -361,7 +425,8 @@ try {
   if (runActive) {
     await verifySearch();
     await verifyCodeExecution();
-    await verifyFileGeneration();
+    const generated = await verifyFileGeneration();
+    await verifyFileEditing(generated);
     await verifyResearch();
     const after = await getUsage();
     verifyQuotaDeltas(before, after);

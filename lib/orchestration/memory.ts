@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getOrCreateOnyxCredential } from "@/lib/db/projects";
+import { getActiveUserStyle } from "@/lib/db/styles";
 import {
   captureOnyxMemory,
   getOnyxPersonalization,
@@ -9,31 +10,38 @@ import {
 
 export async function getUserMemoryContext(userId: string) {
   const credential = await getOrCreateOnyxCredential(userId);
-  const personalization = await getOnyxPersonalization(credential.bearerToken);
+  const [personalization, activeStyle] = await Promise.all([
+    getOnyxPersonalization(credential.bearerToken),
+    getActiveUserStyle(userId),
+  ]);
 
-  if (!personalization.use_memories || personalization.memories.length === 0) {
-    return {
-      enabled: personalization.use_memories,
-      memories: [],
-      prompt: null,
-    };
-  }
+  const memories = personalization.use_memories
+    ? personalization.memories
+        .map((memory) => memory.content.trim())
+        .filter(Boolean)
+    : [];
 
-  const memories = personalization.memories
-    .map((memory) => memory.content.trim())
-    .filter(Boolean);
+  const memoryPrompt =
+    memories.length > 0
+      ? [
+          "Persistent user memories from prior conversations:",
+          ...memories.map((memory) => `- ${memory}`),
+          "Use these only when relevant. Do not mention that a memory system exists unless the user asks.",
+        ].join("\n")
+      : null;
+
+  const stylePrompt = activeStyle
+    ? [
+        `Active response style: ${activeStyle.name}`,
+        activeStyle.instructions,
+        "Follow this response style unless it conflicts with higher-priority instructions or the user's current request.",
+      ].join("\n")
+    : null;
 
   return {
-    enabled: true,
+    enabled: personalization.use_memories,
     memories,
-    prompt:
-      memories.length > 0
-        ? [
-            "Persistent user memories from prior conversations:",
-            ...memories.map((memory) => `- ${memory}`),
-            "Use these only when relevant. Do not mention that a memory system exists unless the user asks.",
-          ].join("\n")
-        : null,
+    prompt: [memoryPrompt, stylePrompt].filter(Boolean).join("\n\n") || null,
   };
 }
 

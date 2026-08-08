@@ -109,6 +109,20 @@ export const project = pgTable(
 
 export type Project = InferSelectModel<typeof project>;
 
+export const userStyle = pgTable("UserStyle", {
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  instructions: text("instructions").notNull(),
+  isActive: boolean("isActive").notNull().default(false),
+  name: varchar("name", { length: 80 }).notNull(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+});
+
+export type UserStyle = InferSelectModel<typeof userStyle>;
+
 export const chat = pgTable("Chat", {
   createdAt: timestamp("createdAt").notNull(),
   id: uuid("id").primaryKey().notNull().defaultRandom(),

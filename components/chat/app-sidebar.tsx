@@ -4,9 +4,11 @@ import {
   EyeOffIcon,
   FolderKanbanIcon,
   MessageSquareIcon,
+  PaletteIcon,
   PanelLeftIcon,
   PenSquareIcon,
   PlugIcon,
+  SearchIcon,
   TrashIcon,
   WrenchIcon,
 } from "lucide-react";
@@ -70,25 +72,19 @@ export function AppSidebar({ user }: { user: User | undefined }) {
     [router, setOpenMobile]
   );
 
-  const handleNewChat = useCallback(() => {
-    navigate("/");
-  }, [navigate]);
-
-  const handleIncognito = useCallback(() => {
-    navigate("/incognito");
-  }, [navigate]);
-
-  const handleProjects = useCallback(() => {
-    navigate("/projects");
-  }, [navigate]);
-
-  const handleConnectors = useCallback(() => {
-    navigate("/connectors");
-  }, [navigate]);
-
-  const handleTools = useCallback(() => {
-    navigate("/tools");
-  }, [navigate]);
+  const handleNewChat = useCallback(() => navigate("/"), [navigate]);
+  const handleIncognito = useCallback(() => navigate("/incognito"), [navigate]);
+  const handleProjects = useCallback(() => navigate("/projects"), [navigate]);
+  const handleConnectors = useCallback(
+    () => navigate("/connectors"),
+    [navigate]
+  );
+  const handleTools = useCallback(() => navigate("/tools"), [navigate]);
+  const handleStyles = useCallback(() => navigate("/styles"), [navigate]);
+  const handleHistorySearch = useCallback(
+    () => navigate("/history-search"),
+    [navigate]
+  );
 
   const handleShowDeleteAllDialog = useCallback(() => {
     setShowDeleteAllDialog(true);
@@ -171,11 +167,29 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                   <>
                     <SidebarMenuItem>
                       <SidebarMenuButton
+                        onClick={handleHistorySearch}
+                        tooltip="Search chats"
+                      >
+                        <SearchIcon className="size-4" />
+                        <span className="text-[13px]">Search chats</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
                         onClick={handleProjects}
                         tooltip="Projects"
                       >
                         <FolderKanbanIcon className="size-4" />
                         <span className="text-[13px]">Projects</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={handleStyles}
+                        tooltip="Custom styles"
+                      >
+                        <PaletteIcon className="size-4" />
+                        <span className="text-[13px]">Styles</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>

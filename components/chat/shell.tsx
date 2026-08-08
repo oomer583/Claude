@@ -17,7 +17,14 @@ import { submitEditedMessage } from "./message-editor";
 import { Messages } from "./messages";
 import { MultimodalInput } from "./multimodal-input";
 
-const PRODUCT_PAGES = ["/settings", "/projects", "/connectors", "/tools"];
+const PRODUCT_PAGES = [
+  "/settings",
+  "/projects",
+  "/connectors",
+  "/tools",
+  "/styles",
+  "/history-search",
+];
 
 export function ChatShell() {
   const pathname = usePathname();

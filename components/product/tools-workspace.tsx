@@ -33,7 +33,7 @@ function extractDownloadLinks(text: string): DownloadLink[] {
       continue;
     }
     seen.add(url);
-    links.push({ label: "Download generated file", url });
+    links.push({ label: "Download file", url });
   }
 
   return links;
@@ -46,10 +46,17 @@ export function ToolsWorkspace() {
   const [filename, setFilename] = useState("output.pdf");
   const [instructions, setInstructions] = useState("");
   const [fileResult, setFileResult] = useState("");
-  const [busy, setBusy] = useState<"code" | "file" | null>(null);
+  const [editFile, setEditFile] = useState<File | null>(null);
+  const [editInstructions, setEditInstructions] = useState("");
+  const [editResult, setEditResult] = useState("");
+  const [busy, setBusy] = useState<"code" | "file" | "edit" | null>(null);
   const downloadLinks = useMemo(
     () => extractDownloadLinks(fileResult),
     [fileResult]
+  );
+  const editDownloadLinks = useMemo(
+    () => extractDownloadLinks(editResult),
+    [editResult]
   );
 
   const runCode = useCallback(async () => {
@@ -108,6 +115,36 @@ export function ToolsWorkspace() {
     }
   }, [filename, format, instructions]);
 
+  const editOfficeFile = useCallback(async () => {
+    if (!(editFile && editInstructions.trim())) {
+      return;
+    }
+    setBusy("edit");
+    setEditResult("");
+    try {
+      const form = new FormData();
+      form.append("file", editFile, editFile.name);
+      form.append("instructions", editInstructions);
+      const response = await fetch("/api/files/edit", {
+        body: form,
+        method: "POST",
+      });
+      const body = (await response.json()) as {
+        answer?: string;
+        error?: string;
+      };
+      if (!response.ok) {
+        toast.error(body.error ?? "File editing failed");
+        return;
+      }
+      setEditResult(body.answer ?? "File edited.");
+    } catch {
+      toast.error("File editing service is unavailable");
+    } finally {
+      setBusy(null);
+    }
+  }, [editFile, editInstructions]);
+
   const handleFormatClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       const next = event.currentTarget.dataset.format as FileFormat | undefined;
@@ -145,19 +182,32 @@ export function ToolsWorkspace() {
     []
   );
 
+  const handleEditInstructionsChange = useCallback(
+    (event: ChangeEvent<HTMLTextAreaElement>) => {
+      setEditInstructions(event.target.value);
+    },
+    []
+  );
+
+  const handleEditFileChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setEditFile(event.target.files?.[0] ?? null);
+    },
+    []
+  );
+
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-5 py-10 md:px-8">
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 py-10 md:px-8">
       <div>
         <p className="text-muted-foreground text-sm">Workspace</p>
         <h1 className="mt-1 font-semibold text-2xl tracking-tight">Tools</h1>
         <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
-          Use the isolated Onyx Code Interpreter directly or generate real
-          Office/PDF files without waiting for the model to decide which tool to
-          call.
+          Run isolated Python, create real Office/PDF files, or edit existing
+          DOCX, XLSX, PPTX, and PDF files through Onyx Code Interpreter.
         </p>
       </div>
 
-      <section className="grid gap-5 lg:grid-cols-2">
+      <section className="grid gap-5 xl:grid-cols-3">
         <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
           <h2 className="font-medium text-sm">Code execution</h2>
           <p className="mt-1 text-muted-foreground text-xs">
@@ -228,6 +278,53 @@ export function ToolsWorkspace() {
               {downloadLinks.length > 0 ? (
                 <div className="mt-3 flex flex-wrap gap-2 border-border/60 border-t pt-3">
                   {downloadLinks.map((link) => (
+                    <Button asChild key={link.url} size="sm" variant="outline">
+                      <a
+                        href={link.url}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                      >
+                        {link.label}
+                      </a>
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
+          <h2 className="font-medium text-sm">Edit Office / PDF</h2>
+          <p className="mt-1 text-muted-foreground text-xs">
+            Upload an existing file, describe the changes, and receive a new
+            edited file.
+          </p>
+          <input
+            accept=".docx,.xlsx,.pptx,.pdf"
+            className="mt-4 block w-full text-sm"
+            onChange={handleEditFileChange}
+            type="file"
+          />
+          <textarea
+            className="mt-3 min-h-44 w-full rounded-xl border border-border bg-background p-3 text-sm outline-none"
+            onChange={handleEditInstructionsChange}
+            placeholder="Example: Replace the title, keep the layout, and add a summary on the last page."
+            value={editInstructions}
+          />
+          <Button
+            className="mt-3"
+            disabled={busy === "edit" || !editFile || !editInstructions.trim()}
+            onClick={editOfficeFile}
+          >
+            {busy === "edit" ? "Editing..." : "Edit file"}
+          </Button>
+          {editResult ? (
+            <div className="mt-4 rounded-xl bg-muted/40 p-3 text-sm">
+              <p className="whitespace-pre-wrap">{editResult}</p>
+              {editDownloadLinks.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-2 border-border/60 border-t pt-3">
+                  {editDownloadLinks.map((link) => (
                     <Button asChild key={link.url} size="sm" variant="outline">
                       <a
                         href={link.url}

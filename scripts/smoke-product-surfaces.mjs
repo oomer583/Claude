@@ -15,13 +15,18 @@ const baseUrl =
 const routes = [
   "/",
   "/incognito",
+  "/history-search",
   "/projects",
+  "/styles",
   "/connectors",
   "/tools",
   "/settings",
   "/privacy",
   "/terms",
   "/api/account",
+  "/api/history/search?q=test",
+  "/api/styles",
+  "/api/files/edit",
   "/api/health/live",
   "/api/health/ready",
 ];
