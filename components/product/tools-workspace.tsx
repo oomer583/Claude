@@ -19,16 +19,16 @@ function extractDownloadLinks(text: string): DownloadLink[] {
   const rawUrlPattern = /https?:\/\/[^\s)]+/g;
 
   for (const match of text.matchAll(markdownPattern)) {
-    const url = match[2];
+    const [, label, url] = match;
     if (!url || seen.has(url)) {
       continue;
     }
     seen.add(url);
-    links.push({ label: match[1] || "Download file", url });
+    links.push({ label: label || "Download file", url });
   }
 
   for (const match of text.matchAll(rawUrlPattern)) {
-    const url = match[0];
+    const [url] = match;
     if (seen.has(url)) {
       continue;
     }
@@ -229,7 +229,11 @@ export function ToolsWorkspace() {
                 <div className="mt-3 flex flex-wrap gap-2 border-border/60 border-t pt-3">
                   {downloadLinks.map((link) => (
                     <Button asChild key={link.url} size="sm" variant="outline">
-                      <a href={link.url} rel="noopener noreferrer" target="_blank">
+                      <a
+                        href={link.url}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                      >
                         {link.label}
                       </a>
                     </Button>
