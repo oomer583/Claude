@@ -3,7 +3,9 @@ const sessionCookie = process.env.E2E_SESSION_COOKIE?.trim();
 const runActive = process.env.E2E_ACTIVE === "1";
 
 if (!rawBaseUrl) {
-  console.error("Set SITE_URL or SITE_ADDRESS before running functional verification.");
+  console.error(
+    "Set SITE_URL or SITE_ADDRESS before running functional verification."
+  );
   process.exit(1);
 }
 
@@ -88,14 +90,26 @@ async function verifyReadOnlySurfaces() {
     "connector discovery",
     await request("/api/connectors")
   );
-  assertShape(Array.isArray(connectors), "Connectors endpoint did not return an array");
+  assertShape(
+    Array.isArray(connectors),
+    "Connectors endpoint did not return an array"
+  );
 
   const projects = assertOk("project list", await request("/api/projects"));
-  assertShape(Array.isArray(projects), "Projects endpoint did not return an array");
+  assertShape(
+    Array.isArray(projects),
+    "Projects endpoint did not return an array"
+  );
 
   const account = assertOk("account export", await request("/api/account"));
-  assertShape(account?.account?.id, "Account export did not include account metadata");
-  assertShape(!("password" in account.account), "Account export exposed a password field");
+  assertShape(
+    account?.account?.id,
+    "Account export did not include account metadata"
+  );
+  assertShape(
+    !("password" in account.account),
+    "Account export exposed a password field"
+  );
   assertShape(
     !account.onyxIdentity || !("encryptedCredential" in account.onyxIdentity),
     "Account export exposed an encrypted credential"
@@ -108,11 +122,17 @@ async function verifySearch() {
   const body = assertOk(
     "web search",
     await request("/api/search", {
-      body: JSON.stringify({ maxResults: 2, queries: ["OpenAI official website"] }),
+      body: JSON.stringify({
+        maxResults: 2,
+        queries: ["OpenAI official website"],
+      }),
       method: "POST",
     })
   );
-  assertShape(Array.isArray(body?.sources), "Web search did not return sources");
+  assertShape(
+    Array.isArray(body?.sources),
+    "Web search did not return sources"
+  );
 }
 
 async function verifyCodeExecution() {
@@ -149,7 +169,10 @@ async function verifyFileGeneration() {
   );
 
   const urls = extractHttpUrls(body?.answer);
-  assertShape(urls.length > 0, "File generation returned no downloadable HTTP(S) URL");
+  assertShape(
+    urls.length > 0,
+    "File generation returned no downloadable HTTP(S) URL"
+  );
 
   const download = await fetch(urls[0], { redirect: "manual" });
   assertShape(
@@ -176,7 +199,7 @@ async function verifyResearch() {
   );
 }
 
-async function verifyQuotaDeltas(before, after) {
+function verifyQuotaDeltas(before, after) {
   if (before.plan === "owner" || after.plan === "owner") {
     console.log("OK quota delta check skipped for unlimited owner plan");
     return;
@@ -189,7 +212,10 @@ async function verifyQuotaDeltas(before, after) {
       typeof previous === "number" && typeof current === "number",
       `Missing live quota counters for ${resource}`
     );
-    assertShape(current > previous, `Quota counter did not increase for ${resource}`);
+    assertShape(
+      current > previous,
+      `Quota counter did not increase for ${resource}`
+    );
     console.log(`OK quota counter ${resource}: ${previous} -> ${current}`);
   }
 }
@@ -210,10 +236,12 @@ try {
   await verifyResearch();
 
   const after = await getUsage();
-  await verifyQuotaDeltas(before, after);
+  verifyQuotaDeltas(before, after);
 
   console.log("Authenticated functional verification passed.");
 } catch (error) {
-  console.error(`FAIL ${error instanceof Error ? error.message : String(error)}`);
+  console.error(
+    `FAIL ${error instanceof Error ? error.message : String(error)}`
+  );
   process.exit(1);
 }
