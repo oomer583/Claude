@@ -94,5 +94,5 @@ export async function POST(
     projectId: productProject.onyxProjectId,
   });
 
-  return Response.json({ result, quota }, { status: 201 });
+  return Response.json({ quota, result }, { status: 201 });
 }
