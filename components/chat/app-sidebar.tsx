@@ -188,10 +188,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={handleTools}
-                        tooltip="Tools"
-                      >
+                      <SidebarMenuButton onClick={handleTools} tooltip="Tools">
                         <WrenchIcon className="size-4" />
                         <span className="text-[13px]">Tools</span>
                       </SidebarMenuButton>
