@@ -97,19 +97,34 @@ async function verifyReadOnlySurfaces() {
     "connector discovery",
     await request("/api/connectors")
   );
-  assertShape(Array.isArray(connectors), "Connectors endpoint did not return an array");
+  assertShape(
+    Array.isArray(connectors),
+    "Connectors endpoint did not return an array"
+  );
   const projects = assertOk("project list", await request("/api/projects"));
-  assertShape(Array.isArray(projects), "Projects endpoint did not return an array");
+  assertShape(
+    Array.isArray(projects),
+    "Projects endpoint did not return an array"
+  );
   const styles = assertOk("style list", await request("/api/styles"));
   assertShape(Array.isArray(styles), "Styles endpoint did not return an array");
   const historySearch = assertOk(
     "past chat search",
     await request("/api/history/search?q=functional")
   );
-  assertShape(Array.isArray(historySearch), "Chat search endpoint did not return an array");
+  assertShape(
+    Array.isArray(historySearch),
+    "Chat search endpoint did not return an array"
+  );
   const account = assertOk("account export", await request("/api/account"));
-  assertShape(account?.account?.id, "Account export did not include account metadata");
-  assertShape(!("password" in account.account), "Account export exposed a password field");
+  assertShape(
+    account?.account?.id,
+    "Account export did not include account metadata"
+  );
+  assertShape(
+    !("password" in account.account),
+    "Account export exposed a password field"
+  );
   assertShape(
     !account.onyxIdentity || !("encryptedCredential" in account.onyxIdentity),
     "Account export exposed an encrypted credential"
@@ -128,7 +143,10 @@ async function verifySearch() {
       method: "POST",
     })
   );
-  assertShape(Array.isArray(body?.sources), "Web search did not return sources");
+  assertShape(
+    Array.isArray(body?.sources),
+    "Web search did not return sources"
+  );
 }
 
 async function verifyCodeExecution() {
@@ -192,7 +210,10 @@ async function verifyFileEditing(generated) {
     await request("/api/files/edit", { body: form, method: "POST" })
   );
   const urls = extractHttpUrls(body?.answer);
-  assertShape(urls.length > 0, "File editing returned no downloadable HTTP(S) URL");
+  assertShape(
+    urls.length > 0,
+    "File editing returned no downloadable HTTP(S) URL"
+  );
   const download = await fetch(urls[0], { redirect: "follow" });
   assertShape(
     download.status >= 200 && download.status < 400,
@@ -255,7 +276,10 @@ async function verifyWorkspaceLifecycle() {
     "project file list",
     await request(`/api/projects/${project.id}/files`)
   );
-  assertShape(Array.isArray(files) && files.length > 0, "Uploaded file not listed");
+  assertShape(
+    Array.isArray(files) && files.length > 0,
+    "Uploaded file not listed"
+  );
 
   const style = assertOk(
     "style create",
@@ -342,7 +366,10 @@ function verifyQuotaDeltas(before, after) {
       typeof previous === "number" && typeof current === "number",
       `Missing live quota counters for ${resource}`
     );
-    assertShape(current > previous, `Quota counter did not increase for ${resource}`);
+    assertShape(
+      current > previous,
+      `Quota counter did not increase for ${resource}`
+    );
     console.log(`OK quota counter ${resource}: ${previous} -> ${current}`);
   }
 }
