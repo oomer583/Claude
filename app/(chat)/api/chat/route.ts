@@ -11,8 +11,7 @@ import {
 import { checkBotId } from "botid/server";
 import { after } from "next/server";
 import { createResumableStreamContext } from "resumable-stream";
-import { auth, type UserType } from "@/app/(auth)/auth";
-import { entitlementsByUserType } from "@/lib/ai/entitlements";
+import { auth } from "@/app/(auth)/auth";
 import {
   allowedModelIds,
   chatModels,
@@ -38,7 +37,6 @@ import {
   createStreamId,
   deleteChatById,
   getChatById,
-  getMessageCountByUserId,
   getMessagesByChatId,
   saveChat,
   saveMessages,
@@ -54,6 +52,7 @@ import {
 } from "@/lib/orchestration/project-context";
 import { checkIpRateLimit } from "@/lib/ratelimit";
 import type { ChatMessage, WaitingStatusData } from "@/lib/types";
+import { consumeQuota } from "@/lib/usage/quotas";
 import { convertToUIMessages, generateUUID } from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
@@ -149,13 +148,11 @@ export async function POST(request: Request) {
 
     await checkIpRateLimit(ipAddress(request));
 
-    const userType: UserType = session.user.type;
-    const messageCount = await getMessageCountByUserId({
-      differenceInHours: 1,
-      id: session.user.id,
+    const messageQuota = await consumeQuota({
+      resource: "messages",
+      userId: session.user.id,
     });
-
-    if (messageCount > entitlementsByUserType[userType].maxMessagesPerHour) {
+    if (!messageQuota.allowed) {
       return new ChatbotError("rate_limit:chat").toResponse();
     }
 
