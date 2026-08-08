@@ -1,13 +1,16 @@
 const rawBaseUrl = process.env.SITE_URL ?? process.env.SITE_ADDRESS;
 
 if (!rawBaseUrl) {
-  console.error("Set SITE_URL or SITE_ADDRESS before running product smoke checks.");
+  console.error(
+    "Set SITE_URL or SITE_ADDRESS before running product smoke checks."
+  );
   process.exit(1);
 }
 
-const baseUrl = rawBaseUrl.startsWith("http://") || rawBaseUrl.startsWith("https://")
-  ? rawBaseUrl.replace(/\/$/, "")
-  : `https://${rawBaseUrl.replace(/\/$/, "")}`;
+const baseUrl =
+  rawBaseUrl.startsWith("http://") || rawBaseUrl.startsWith("https://")
+    ? rawBaseUrl.replace(/\/$/, "")
+    : `https://${rawBaseUrl.replace(/\/$/, "")}`;
 
 const routes = [
   "/",
@@ -20,26 +23,31 @@ const routes = [
   "/api/health/ready",
 ];
 
-let failed = false;
-
-for (const route of routes) {
-  try {
-    const response = await fetch(`${baseUrl}${route}`, {
-      redirect: "manual",
-    });
-    const acceptable = response.status !== 404 && response.status < 500;
-    const marker = acceptable ? "OK" : "FAIL";
-    console.log(`${marker} ${response.status} ${route}`);
-    if (!acceptable) {
-      failed = true;
+const results = await Promise.all(
+  routes.map(async (route) => {
+    try {
+      const response = await fetch(`${baseUrl}${route}`, {
+        redirect: "manual",
+      });
+      const acceptable = response.status !== 404 && response.status < 500;
+      return {
+        acceptable,
+        message: `${acceptable ? "OK" : "FAIL"} ${response.status} ${route}`,
+      };
+    } catch (error) {
+      return {
+        acceptable: false,
+        message: `FAIL network ${route}: ${String(error)}`,
+      };
     }
-  } catch (error) {
-    failed = true;
-    console.error(`FAIL network ${route}`, error);
-  }
+  })
+);
+
+for (const result of results) {
+  console.log(result.message);
 }
 
-if (failed) {
+if (results.some((result) => !result.acceptable)) {
   console.error("Product surface smoke checks failed.");
   process.exit(1);
 }
