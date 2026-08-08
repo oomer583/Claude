@@ -3,7 +3,7 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   createContext,
   type Dispatch,
@@ -59,10 +59,12 @@ function extractChatId(pathname: string): string | null {
 
 export function ActiveChatProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { setDataStream, setWaitingStatus } = useDataStream();
   const { mutate } = useSWRConfig();
 
   const isIncognito = pathname === "/incognito";
+  const projectId = isIncognito ? null : searchParams.get("project");
   const chatIdFromUrl = isIncognito ? null : extractChatId(pathname);
   const isNewChat = !chatIdFromUrl;
   const newChatIdRef = useRef(generateUUID());
@@ -171,6 +173,7 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
               ? { messages: request.messages }
               : { message: lastMessage }),
             incognito: isIncognito,
+            projectId,
             selectedChatModel: currentModelIdRef.current,
             selectedVisibilityType: visibility,
             ...request.body,
@@ -230,19 +233,22 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
     const query = params.get("query");
     if (query && !hasAppendedQueryRef.current) {
       hasAppendedQueryRef.current = true;
+      const projectQuery = projectId
+        ? `?project=${encodeURIComponent(projectId)}${params.get("projectName") ? `&projectName=${encodeURIComponent(params.get("projectName") ?? "")}` : ""}`
+        : "";
       window.history.replaceState(
         {},
         "",
         isIncognito
           ? `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/incognito`
-          : `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/chat/${chatId}`
+          : `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/chat/${chatId}${projectQuery}`
       );
       sendMessage({
         parts: [{ text: query, type: "text" }],
         role: "user" as const,
       });
     }
-  }, [sendMessage, chatId, isIncognito]);
+  }, [sendMessage, chatId, isIncognito, projectId]);
 
   useAutoResume({
     autoResume: !isNewChat && !isIncognito && !!chatData,
