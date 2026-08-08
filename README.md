@@ -1,55 +1,71 @@
-# AI Çalışma Alanı
+<a href="https://chatbot.ai-sdk.dev/demo">
+  <img alt="Chatbot" src="app/(chat)/opengraph-image.png">
+  <h1 align="center">Chatbot</h1>
+</a>
 
-Claude benzeri bir deneyim sunmayı hedefleyen, sohbeti; proje, dosya ve üretilebilir içerik iş akışlarıyla birleştiren modern bir AI çalışma alanıdır. Bu depo şu anda **planlama ve dokümantasyon aşamasındadır**; henüz uygulama kodu içermez.
+<p align="center">
+    Chatbot (formerly AI Chatbot) is a free, open-source template built with Next.js and the AI SDK that helps you quickly build powerful chatbot applications.
+</p>
 
-## Vizyon
+<p align="center">
+  <a href="https://chatbot.ai-sdk.dev/docs"><strong>Read Docs</strong></a> ·
+  <a href="#features"><strong>Features</strong></a> ·
+  <a href="#model-providers"><strong>Model Providers</strong></a> ·
+  <a href="#deploy-your-own"><strong>Deploy Your Own</strong></a> ·
+  <a href="#running-locally"><strong>Running locally</strong></a>
+</p>
+<br/>
 
-Kullanıcıların bir AI asistanıyla tek seferlik mesajlaşmanın ötesine geçerek uzun süreli bağlam oluşturabildiği, kaynak dosyalarını düzenleyebildiği ve ortaya çıkan içerikleri canlı olarak inceleyebildiği güvenli bir çalışma ortamı sunmak.
+## Features
 
-## Planlanan yetenekler
+- [Next.js](https://nextjs.org) App Router
+  - Advanced routing for seamless navigation and performance
+  - React Server Components (RSCs) and Server Actions for server-side rendering and increased performance
+- [AI SDK](https://ai-sdk.dev/docs/introduction)
+  - Unified API for generating text, structured objects, and tool calls with LLMs
+  - Hooks for building dynamic chat and generative user interfaces
+  - Supports OpenAI, Anthropic, Google, xAI, and other model providers via AI Gateway
+- [shadcn/ui](https://ui.shadcn.com)
+  - Styling with [Tailwind CSS](https://tailwindcss.com)
+  - Component primitives from [Radix UI](https://radix-ui.com) for accessibility and flexibility
+- Data Persistence
+  - [Neon Serverless Postgres](https://vercel.com/marketplace/neon) for saving chat history and user data
+  - [Vercel Blob](https://vercel.com/storage/blob) for efficient file storage
+- [Auth.js](https://authjs.dev)
+  - Simple and secure authentication
 
-- Akış destekli AI sohbeti
-- Aranabilir ve kalıcı sohbet geçmişi
-- Sohbetleri, talimatları ve dosyaları bir araya getiren Projects alanı
-- Güvenli dosya yükleme, metin çıkarma ve analiz
-- Artifacts oluşturma, sürümleme ve canlı önizleme
-- Kullanıcı hesabı, oturum ve hesap yönetimi
-- Free ve Pro planlarına göre ölçümlenen kullanım limitleri
-- Aylık Pro aboneliği ve faturalandırma yaşam döngüsü
-- İleriki bir aşamada OpenCode tabanlı, izole çalışan kod ajanı
+## Model Providers
 
-## Planlanan teknoloji yığını
+This template uses the [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) to access multiple AI models through a unified interface. Models are configured in `lib/ai/models.ts` with per-model provider routing. Included models: Mistral, Moonshot, DeepSeek, OpenAI, and xAI.
 
-| Katman | Teknoloji |
-| --- | --- |
-| Dil | TypeScript |
-| Web uygulaması | Next.js |
-| API | Fastify |
-| Veritabanı | PostgreSQL |
-| Dağıtım | Docker Compose |
-| AI erişimi | Harici model sağlayıcılarının API'leri |
+### AI Gateway Authentication
 
-> Laravel bu projenin teknoloji yığınında yer almaz. Modeller yerel olarak barındırılmayacak; yalnızca sağlayıcı API'leri üzerinden kullanılacaktır.
+**For Vercel deployments**: Authentication is handled automatically via OIDC tokens.
 
-## Dokümantasyon
+**For non-Vercel deployments**: You need to provide an AI Gateway API key by setting the `AI_GATEWAY_API_KEY` environment variable in your `.env.local` file.
 
-- [Ürün tanımı](docs/PRODUCT.md): hedef kitle, kapsam, deneyim ilkeleri ve başarı ölçütleri
-- [Mimari](docs/ARCHITECTURE.md): servis sınırları, veri akışları, güvenlik ve production yaklaşımı
-- [Yol haritası](docs/ROADMAP.md): aşamalar, teslimat ölçütleri ve bağımlılıklar
-- [Katkı ve ajan rehberi](AGENTS.md): depo kuralları ve gelecekteki geliştirme ilkeleri
+With the [AI SDK](https://ai-sdk.dev/docs/introduction), you can also switch to direct LLM providers like [OpenAI](https://openai.com), [Anthropic](https://anthropic.com), [Cohere](https://cohere.com/), and [many more](https://ai-sdk.dev/providers/ai-sdk-providers) with just a few lines of code.
 
-## Mevcut durum
+## Deploy Your Own
 
-Depoda yalnızca ürün ve teknik planlama belgeleri bulunmaktadır. Kurulum, geliştirme veya çalıştırma komutu henüz yoktur. Uygulama geliştirme başlamadan önce temel kararlar, tehdit modeli ve ilk sürüm kapsamı belgeler üzerinden netleştirilecektir.
+You can deploy your own version of Chatbot to Vercel with one click:
 
-## Temel ilkeler
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/templates/next.js/chatbot)
 
-1. **Gizlilik ve güvenlik:** Kullanıcı içeriği, kimlik bilgileri ve sağlayıcı anahtarları en az yetki ilkesiyle korunur.
-2. **Sağlayıcı bağımsızlığı:** Ürün katmanı, belirli bir AI sağlayıcısının veri modellerine doğrudan bağlanmaz.
-3. **Ölçülebilir maliyet:** Token, depolama ve işlem tüketimi plan bazında izlenir ve sınırlandırılır.
-4. **Aşamalı teslimat:** Sohbet çekirdeği doğrulanmadan daha karmaşık ajan özelliklerine geçilmez.
-5. **Production odaklılık:** Yerel geliştirme ve production kurulumu tekrar üretilebilir container tanımlarıyla yönetilir.
+## Running locally
 
-## Lisans
+You will need to use the environment variables [defined in `.env.example`](.env.example) to run Chatbot. It's recommended you use [Vercel Environment Variables](https://vercel.com/docs/projects/environment-variables) for this, but a `.env` file is all that is necessary.
 
-Henüz bir lisans seçilmemiştir. Lisans belirlenene kadar bu depodaki içeriğin yeniden kullanımı için proje sahiplerinden izin alınmalıdır.
+> Note: You should not commit your `.env` file or it will expose secrets that will allow others to control access to your various AI and authentication provider accounts.
+
+1. Install Vercel CLI: `npm i -g vercel`
+2. Link local instance with Vercel and GitHub accounts (creates `.vercel` directory): `vercel link`
+3. Download your environment variables: `vercel env pull`
+
+```bash
+pnpm install
+pnpm db:migrate # Setup database or apply latest database changes
+pnpm dev
+```
+
+Your app template should now be running on [localhost:3000](http://localhost:3000).
