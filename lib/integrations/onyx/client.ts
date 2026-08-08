@@ -16,7 +16,7 @@ export class OnyxError extends Error {
   constructor(
     code: OnyxError["code"],
     message: string,
-    options?: { status?: number; cause?: unknown }
+    options?: { cause?: unknown; status?: number }
   ) {
     super(message, { cause: options?.cause });
     this.name = "OnyxError";
@@ -34,22 +34,30 @@ function baseUrl() {
 }
 
 function mapStatus(status: number): OnyxError["code"] {
-  if (status === 401) return "UNAUTHORIZED";
-  if (status === 403) return "FORBIDDEN";
-  if (status === 404) return "NOT_FOUND";
-  if (status === 429) return "RATE_LIMITED";
+  if (status === 401) {
+    return "UNAUTHORIZED";
+  }
+  if (status === 403) {
+    return "FORBIDDEN";
+  }
+  if (status === 404) {
+    return "NOT_FOUND";
+  }
+  if (status === 429) {
+    return "RATE_LIMITED";
+  }
   return "UPSTREAM_ERROR";
 }
 
 export async function onyxRequest<T>({
-  path,
   bearerToken,
   init,
+  path,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 }: {
-  path: string;
   bearerToken: string;
   init?: RequestInit;
+  path: string;
   timeoutMs?: number;
 }): Promise<T> {
   const controller = new AbortController();
@@ -64,8 +72,8 @@ export async function onyxRequest<T>({
 
     const response = await fetch(`${baseUrl()}${path}`, {
       ...init,
-      headers,
       cache: "no-store",
+      headers,
       signal: controller.signal,
     });
 
@@ -86,12 +94,14 @@ export async function onyxRequest<T>({
       return (await response.json()) as T;
     } catch (error) {
       throw new OnyxError("BAD_RESPONSE", "Onyx returned invalid JSON", {
-        status: response.status,
         cause: error,
+        status: response.status,
       });
     }
   } catch (error) {
-    if (error instanceof OnyxError) throw error;
+    if (error instanceof OnyxError) {
+      throw error;
+    }
     if (error instanceof DOMException && error.name === "AbortError") {
       throw new OnyxError("TIMEOUT", "Onyx request timed out", { cause: error });
     }
