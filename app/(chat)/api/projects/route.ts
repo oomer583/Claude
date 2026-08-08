@@ -1,9 +1,6 @@
 import { z } from "zod";
 import { auth } from "@/app/(auth)/auth";
-import {
-  createProjectForUser,
-  listProjectsByUserId,
-} from "@/lib/db/projects";
+import { createProjectForUser, listProjectsByUserId } from "@/lib/db/projects";
 import { ChatbotError } from "@/lib/errors";
 
 const createProjectSchema = z.object({
@@ -29,10 +26,7 @@ export async function POST(request: Request) {
 
   const parsed = createProjectSchema.safeParse(await request.json());
   if (!parsed.success) {
-    return Response.json(
-      { error: "Invalid project payload" },
-      { status: 400 }
-    );
+    return Response.json({ error: "Invalid project payload" }, { status: 400 });
   }
 
   const created = await createProjectForUser({
