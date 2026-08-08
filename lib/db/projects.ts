@@ -40,7 +40,7 @@ export async function getOrCreateOnyxCredential(userId: string) {
   };
 }
 
-export async function listProjectsByUserId(userId: string) {
+export function listProjectsByUserId(userId: string) {
   return db
     .select()
     .from(project)
