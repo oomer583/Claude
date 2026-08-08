@@ -26,6 +26,7 @@ import { createDocument } from "@/lib/ai/tools/create-document";
 import { deepResearch } from "@/lib/ai/tools/deep-research";
 import { editDocument } from "@/lib/ai/tools/edit-document";
 import { getWeather } from "@/lib/ai/tools/get-weather";
+import { memoryTool } from "@/lib/ai/tools/memory";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { updateDocument } from "@/lib/ai/tools/update-document";
 import { webSearch } from "@/lib/ai/tools/web-search";
@@ -43,6 +44,7 @@ import {
 } from "@/lib/db/queries";
 import type { DBMessage } from "@/lib/db/schema";
 import { ChatbotError } from "@/lib/errors";
+import { getUserMemoryContext } from "@/lib/orchestration/memory";
 import {
   formatProjectContextForPrompt,
   retrieveProjectContext,
@@ -227,6 +229,14 @@ export async function POST(request: Request) {
       }
     }
 
+    let memoryContextPrompt: string | null = null;
+    try {
+      const memoryContext = await getUserMemoryContext(session.user.id);
+      memoryContextPrompt = memoryContext.prompt;
+    } catch (error) {
+      console.warn("Memory context unavailable; continuing without it", error);
+    }
+
     if (message?.role === "user") {
       await saveMessages({
         messages: [
@@ -250,9 +260,13 @@ export async function POST(request: Request) {
 
     const modelMessages = await convertToModelMessages(uiMessages);
     const baseInstructions = systemPrompt({ requestHints, supportsTools });
-    const instructions = projectContextPrompt
-      ? `${baseInstructions}\n\n${projectContextPrompt}`
-      : baseInstructions;
+    const instructions = [
+      baseInstructions,
+      memoryContextPrompt,
+      projectContextPrompt,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
 
     const stream = createUIMessageStream({
       execute: async ({ writer: dataStream }) => {
@@ -326,6 +340,7 @@ export async function POST(request: Request) {
                   "getWeather",
                   "webSearch",
                   "deepResearch",
+                  "memory",
                   "createDocument",
                   "editDocument",
                   "updateDocument",
@@ -370,6 +385,7 @@ export async function POST(request: Request) {
             deepResearch: deepResearch({ userId: session.user.id }),
             editDocument: editDocument({ dataStream, session }),
             getWeather,
+            memory: memoryTool({ userId: session.user.id }),
             requestSuggestions: requestSuggestions({
               dataStream,
               modelId: chatModel,
