@@ -7,7 +7,9 @@ export default function PrivacyPage() {
       <h1 className="mt-1 font-semibold text-3xl tracking-tight">Privacy</h1>
       <div className="mt-8 space-y-6 text-sm leading-7 text-muted-foreground">
         <section>
-          <h2 className="font-medium text-base text-foreground">Data we store</h2>
+          <h2 className="font-medium text-base text-foreground">
+            Data we store
+          </h2>
           <p className="mt-2">
             The service stores account information and product data needed to
             provide persistent chats, projects, documents, preferences, plan
@@ -15,7 +17,9 @@ export default function PrivacyPage() {
           </p>
         </section>
         <section>
-          <h2 className="font-medium text-base text-foreground">AI processing</h2>
+          <h2 className="font-medium text-base text-foreground">
+            AI processing
+          </h2>
           <p className="mt-2">
             Requests may be processed by configured model and workspace
             services. Server-side credentials are not exposed to the browser.
@@ -24,7 +28,9 @@ export default function PrivacyPage() {
           </p>
         </section>
         <section>
-          <h2 className="font-medium text-base text-foreground">Your controls</h2>
+          <h2 className="font-medium text-base text-foreground">
+            Your controls
+          </h2>
           <p className="mt-2">
             Signed-in users can export their product data and request permanent
             account deletion from Settings. Account deletion also revokes the
