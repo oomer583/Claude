@@ -20,6 +20,7 @@
     "deploy:check": "node --env-file=.env scripts/check-env.mjs",
     "deploy:preflight": "docker compose exec app node scripts/preflight-upstreams.mjs",
     "deploy:smoke": "node scripts/smoke-health.mjs",
+    "deploy:features": "node scripts/smoke-product-surfaces.mjs",
     "test": "export PLAYWRIGHT=True && pnpm exec playwright test"
   },
   "dependencies": {

@@ -1,11 +1,43 @@
 "use client";
 
 import type { ChangeEvent, MouseEvent } from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
 type FileFormat = "docx" | "xlsx" | "pptx" | "pdf";
+
+type DownloadLink = {
+  label: string;
+  url: string;
+};
+
+function extractDownloadLinks(text: string): DownloadLink[] {
+  const links: DownloadLink[] = [];
+  const seen = new Set<string>();
+  const markdownPattern = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+  const rawUrlPattern = /https?:\/\/[^\s)]+/g;
+
+  for (const match of text.matchAll(markdownPattern)) {
+    const [, label, url] = match;
+    if (!url || seen.has(url)) {
+      continue;
+    }
+    seen.add(url);
+    links.push({ label: label || "Download file", url });
+  }
+
+  for (const match of text.matchAll(rawUrlPattern)) {
+    const [url] = match;
+    if (seen.has(url)) {
+      continue;
+    }
+    seen.add(url);
+    links.push({ label: "Download generated file", url });
+  }
+
+  return links;
+}
 
 export function ToolsWorkspace() {
   const [code, setCode] = useState("print('hello')");
@@ -15,6 +47,10 @@ export function ToolsWorkspace() {
   const [instructions, setInstructions] = useState("");
   const [fileResult, setFileResult] = useState("");
   const [busy, setBusy] = useState<"code" | "file" | null>(null);
+  const downloadLinks = useMemo(
+    () => extractDownloadLinks(fileResult),
+    [fileResult]
+  );
 
   const runCode = useCallback(async () => {
     if (!code.trim()) {
@@ -187,8 +223,23 @@ export function ToolsWorkspace() {
             {busy === "file" ? "Generating..." : "Generate file"}
           </Button>
           {fileResult ? (
-            <div className="mt-4 whitespace-pre-wrap rounded-xl bg-muted/40 p-3 text-sm">
-              {fileResult}
+            <div className="mt-4 rounded-xl bg-muted/40 p-3 text-sm">
+              <p className="whitespace-pre-wrap">{fileResult}</p>
+              {downloadLinks.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-2 border-border/60 border-t pt-3">
+                  {downloadLinks.map((link) => (
+                    <Button asChild key={link.url} size="sm" variant="outline">
+                      <a
+                        href={link.url}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                      >
+                        {link.label}
+                      </a>
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
