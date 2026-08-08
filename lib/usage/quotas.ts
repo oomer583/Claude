@@ -23,7 +23,10 @@ const MONTH_SECONDS = 30 * 24 * 60 * 60;
 const DAY_SECONDS = 24 * 60 * 60;
 const HOUR_SECONDS = 60 * 60;
 
-const PLAN_QUOTAS: Record<Exclude<Plan, "owner">, Record<QuotaResource, QuotaRule>> = {
+const PLAN_QUOTAS: Record<
+  Exclude<Plan, "owner">,
+  Record<QuotaResource, QuotaRule>
+> = {
   free: {
     code: { limit: 10, windowSeconds: HOUR_SECONDS },
     fileGeneration: { limit: 10, windowSeconds: DAY_SECONDS },
@@ -111,7 +114,9 @@ export async function consumeQuota({
 
   if (!redis) {
     if (process.env.NODE_ENV === "production") {
-      throw new Error("Quota backend is unavailable: REDIS_URL is not configured");
+      throw new Error(
+        "Quota backend is unavailable: REDIS_URL is not configured"
+      );
     }
 
     return {
