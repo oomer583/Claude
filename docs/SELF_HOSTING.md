@@ -1,66 +1,103 @@
-# Self-hosting
+# Self-hosting fastlane
 
-This is the shortest supported path to get the product running as a website while keeping the full server-side architecture.
+This is the shortest supported path to run the full product as a website without dropping the server-side architecture.
 
-## What Compose manages
+## What this repository starts
 
-`compose.yaml` starts:
+`compose.yaml` starts the Next.js application, PostgreSQL, Redis, and Caddy. PostgreSQL and Redis are isolated on an internal Docker network. Caddy is the only service intended to accept public traffic.
 
-- the Next.js application,
-- PostgreSQL with a persistent volume,
-- Redis with AOF persistence.
+9Router and Onyx remain dedicated upstream services. The app reaches them through `ROUTER_BASE_URL` and `ONYX_BASE_URL`. If they run directly on the same Linux server, `host.docker.internal` is mapped automatically inside the app container.
 
-9Router and Onyx stay as dedicated services. Point `ROUTER_BASE_URL` and `ONYX_BASE_URL` at the instances you run for those projects. This keeps their upstream deployment model independent instead of copying their internals into this repository.
+## 1. Create secrets and `.env`
 
-## 1. Create `.env`
+Copy `.env.example` to `.env`.
 
-Copy `.env.example` to `.env` and set all required values. For the Compose-managed database, also set:
-
-```env
-POSTGRES_USER=claude
-POSTGRES_PASSWORD=replace-with-a-long-random-password
-POSTGRES_DB=claude
-APP_PORT=3000
-```
-
-`POSTGRES_URL` and `REDIS_URL` from `.env` are overridden inside the app container so it uses the Compose service names.
-
-Validate the important values before starting:
+Generate the local secrets in one command:
 
 ```bash
-node --env-file=.env scripts/check-env.mjs
+pnpm deploy:secrets
 ```
 
-## 2. Start the website stack
+Copy the generated values into `.env`, then add the real 9Router API key, Onyx admin API key, and any storage credentials you use.
+
+Validate the deployment environment:
+
+```bash
+pnpm deploy:check
+```
+
+## 2. Point at 9Router and Onyx
+
+For services published on the same host, the defaults can look like:
+
+```env
+ROUTER_BASE_URL=http://host.docker.internal:20128/v1
+ONYX_BASE_URL=http://host.docker.internal:8080
+```
+
+Use the actual published ports from those services. Do not expose their admin/API ports to the public internet just to make this app work.
+
+## 3. Start everything managed here
 
 ```bash
 docker compose up -d --build
 ```
 
-The app container runs product database migrations before `next start`. PostgreSQL and Redis must pass their own health checks before the app starts.
+The app waits for PostgreSQL and Redis health checks, runs product database migrations, and then starts Next.js. Caddy waits for the app health check before proxying traffic.
 
-## 3. Verify it
+Verify authenticated upstream connectivity from inside the running app container:
 
 ```bash
-APP_URL=http://127.0.0.1:3000 node scripts/smoke-health.mjs
+pnpm deploy:preflight
 ```
 
-- `/api/health/live` confirms the Next.js process is responding.
-- `/api/health/ready` confirms PostgreSQL, Redis, 9Router and Onyx are reachable.
+This checks 9Router health, authenticated `/v1/models`, Onyx health, and authenticated Onyx `/me` access. It fails without printing credentials or upstream response bodies.
 
-If readiness fails, inspect the named dependency in the JSON response instead of guessing.
+## 4. Public URL and HTTPS
 
-## 4. Put a public URL in front of it
+For a quick local HTTP test, keep:
 
-The application listens on `APP_PORT` (default `3000`). A reverse proxy, tunnel, or hosting-provided HTTPS subdomain can point to that port. Keep PostgreSQL, Redis, Onyx admin credentials, 9Router credentials and all internal service ports private.
+```env
+SITE_ADDRESS=:80
+```
+
+For a real free hostname or subdomain, point its DNS record to the server and set only the hostname:
+
+```env
+SITE_ADDRESS=my-ai.example.org
+```
+
+Then apply it:
+
+```bash
+docker compose up -d
+```
+
+Caddy obtains and renews HTTPS automatically when the hostname resolves to the server and ports 80/443 are reachable. The raw Next.js port is bound to `127.0.0.1` only; public traffic goes through Caddy.
+
+## 5. Final smoke test
+
+Local app port:
+
+```bash
+APP_URL=http://127.0.0.1:3000 pnpm deploy:smoke
+```
+
+Public HTTPS hostname:
+
+```bash
+APP_URL=https://my-ai.example.org pnpm deploy:smoke
+```
+
+The smoke test checks `/api/health/live` and `/api/health/ready`. Readiness includes PostgreSQL, Redis, 9Router, and Onyx.
 
 ## Useful commands
 
 ```bash
 docker compose ps
-docker compose logs -f app
-docker compose restart app
+docker compose logs -f app caddy
+docker compose restart app caddy
 docker compose down
 ```
 
-Do not use `docker compose down -v` unless you intentionally want to delete PostgreSQL and Redis volumes.
+Do not use `docker compose down -v` unless you intentionally want to delete PostgreSQL, Redis, and Caddy state volumes.
