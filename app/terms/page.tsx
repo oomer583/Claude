@@ -15,7 +15,9 @@ export default function TermsPage() {
           </p>
         </section>
         <section>
-          <h2 className="font-medium text-base text-foreground">Generated output</h2>
+          <h2 className="font-medium text-base text-foreground">
+            Generated output
+          </h2>
           <p className="mt-2">
             AI-generated text, code, files, research, and other output can be
             incomplete or incorrect. Users remain responsible for reviewing
@@ -23,7 +25,9 @@ export default function TermsPage() {
           </p>
         </section>
         <section>
-          <h2 className="font-medium text-base text-foreground">Connected services</h2>
+          <h2 className="font-medium text-base text-foreground">
+            Connected services
+          </h2>
           <p className="mt-2">
             Features that use model providers, workspace services, connectors,
             or external tools are also subject to the rules and availability of
@@ -31,7 +35,9 @@ export default function TermsPage() {
           </p>
         </section>
         <section>
-          <h2 className="font-medium text-base text-foreground">Plans and limits</h2>
+          <h2 className="font-medium text-base text-foreground">
+            Plans and limits
+          </h2>
           <p className="mt-2">
             Product plans can enforce server-side usage limits. A payment
             provider is not currently connected, so paid billing terms must be
