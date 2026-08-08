@@ -8,6 +8,7 @@ import {
   listOnyxProjectFiles,
   uploadOnyxProjectFiles,
 } from "@/lib/integrations/onyx/projects";
+import { consumeQuota } from "@/lib/usage/quotas";
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const MAX_FILES_PER_REQUEST = 10;
@@ -74,6 +75,18 @@ export async function POST(
     );
   }
 
+  const quota = await consumeQuota({
+    cost: files.length,
+    resource: "uploads",
+    userId: session.user.id,
+  });
+  if (!quota.allowed) {
+    return Response.json(
+      { error: "Project upload limit reached", quota },
+      { status: 429 }
+    );
+  }
+
   const credential = await getOrCreateOnyxCredential(session.user.id);
   const result = await uploadOnyxProjectFiles({
     bearerToken: credential.bearerToken,
@@ -81,5 +94,5 @@ export async function POST(
     projectId: productProject.onyxProjectId,
   });
 
-  return Response.json(result, { status: 201 });
+  return Response.json({ result, quota }, { status: 201 });
 }
