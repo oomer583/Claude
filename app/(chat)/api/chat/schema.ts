@@ -28,8 +28,10 @@ const toolApprovalMessageSchema = z.object({
 
 export const postRequestBodySchema = z.object({
   id: z.uuid(),
+  incognito: z.boolean().default(false),
   message: userMessageSchema.optional(),
   messages: z.array(toolApprovalMessageSchema).optional(),
+  projectId: z.uuid().nullable().optional(),
   selectedChatModel: z.string(),
   selectedVisibilityType: z.enum(["public", "private"]),
 });

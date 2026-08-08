@@ -2,11 +2,13 @@ import type { InferSelectModel } from "drizzle-orm";
 import {
   boolean,
   foreignKey,
+  integer,
   json,
   pgTable,
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -25,9 +27,95 @@ export const user = pgTable("User", {
 
 export type User = InferSelectModel<typeof user>;
 
+export const userEntitlement = pgTable("UserEntitlement", {
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  expiresAt: timestamp("expiresAt"),
+  plan: varchar("plan", { enum: ["free", "premium", "owner"] })
+    .notNull()
+    .default("free"),
+  source: varchar("source", { enum: ["default", "promo", "manual", "billing"] })
+    .notNull()
+    .default("default"),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  userId: uuid("userId")
+    .primaryKey()
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+});
+
+export type UserEntitlement = InferSelectModel<typeof userEntitlement>;
+
+export const promoRedemption = pgTable(
+  "PromoRedemption",
+  {
+    codeHash: varchar("codeHash", { length: 64 }).notNull(),
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    redeemedAt: timestamp("redeemedAt").notNull().defaultNow(),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    oneRedemptionPerCode: uniqueIndex(
+      "PromoRedemption_userId_codeHash_unique"
+    ).on(table.userId, table.codeHash),
+  })
+);
+
+export type PromoRedemption = InferSelectModel<typeof promoRedemption>;
+
+export const onyxIdentity = pgTable(
+  "OnyxIdentity",
+  {
+    apiKeyId: integer("apiKeyId").notNull(),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    encryptedCredential: text("encryptedCredential").notNull(),
+    onyxUserId: uuid("onyxUserId").notNull(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+    userId: uuid("userId")
+      .primaryKey()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    onyxUserIdUnique: uniqueIndex("OnyxIdentity_onyxUserId_unique").on(
+      table.onyxUserId
+    ),
+  })
+);
+
+export type OnyxIdentity = InferSelectModel<typeof onyxIdentity>;
+
+export const project = pgTable(
+  "Project",
+  {
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    instructions: text("instructions"),
+    name: text("name").notNull(),
+    onyxProjectId: integer("onyxProjectId").notNull(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    onyxProjectUnique: uniqueIndex("Project_userId_onyxProjectId_unique").on(
+      table.userId,
+      table.onyxProjectId
+    ),
+  })
+);
+
+export type Project = InferSelectModel<typeof project>;
+
 export const chat = pgTable("Chat", {
   createdAt: timestamp("createdAt").notNull(),
   id: uuid("id").primaryKey().notNull().defaultRandom(),
+  onyxChatSessionId: uuid("onyxChatSessionId"),
+  projectId: uuid("projectId").references(() => project.id, {
+    onDelete: "set null",
+  }),
   title: text("title").notNull(),
   userId: uuid("userId")
     .notNull()

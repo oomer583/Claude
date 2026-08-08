@@ -11,8 +11,7 @@ import {
 import { checkBotId } from "botid/server";
 import { after } from "next/server";
 import { createResumableStreamContext } from "resumable-stream";
-import { auth, type UserType } from "@/app/(auth)/auth";
-import { entitlementsByUserType } from "@/lib/ai/entitlements";
+import { auth } from "@/app/(auth)/auth";
 import {
   allowedModelIds,
   chatModels,
@@ -22,17 +21,22 @@ import {
 } from "@/lib/ai/models";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
+import { codeExecution } from "@/lib/ai/tools/code-execution";
 import { createDocument } from "@/lib/ai/tools/create-document";
+import { deepResearch } from "@/lib/ai/tools/deep-research";
 import { editDocument } from "@/lib/ai/tools/edit-document";
+import { generateFile } from "@/lib/ai/tools/file-generation";
 import { getWeather } from "@/lib/ai/tools/get-weather";
+import { mcpAction } from "@/lib/ai/tools/mcp-action";
+import { memoryTool } from "@/lib/ai/tools/memory";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { updateDocument } from "@/lib/ai/tools/update-document";
+import { webSearch } from "@/lib/ai/tools/web-search";
 import { isProductionEnvironment } from "@/lib/constants";
 import {
   createStreamId,
   deleteChatById,
   getChatById,
-  getMessageCountByUserId,
   getMessagesByChatId,
   saveChat,
   saveMessages,
@@ -41,20 +45,53 @@ import {
 } from "@/lib/db/queries";
 import type { DBMessage } from "@/lib/db/schema";
 import { ChatbotError } from "@/lib/errors";
+import { getUserMemoryContext } from "@/lib/orchestration/memory";
+import {
+  formatProjectContextForPrompt,
+  retrieveProjectContext,
+} from "@/lib/orchestration/project-context";
 import { checkIpRateLimit } from "@/lib/ratelimit";
 import type { ChatMessage, WaitingStatusData } from "@/lib/types";
+import { consumeQuota } from "@/lib/usage/quotas";
 import { convertToUIMessages, generateUUID } from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const HEALTH_CHECK_DELAY_MS = 9000;
+
+const INCOGNITO_ACTIVE_TOOLS = ["getWeather", "webSearch"] as const;
+const PERSISTENT_ACTIVE_TOOLS = [
+  "getWeather",
+  "webSearch",
+  "deepResearch",
+  "memory",
+  "mcpAction",
+  "codeExecution",
+  "generateFile",
+  "createDocument",
+  "editDocument",
+  "updateDocument",
+  "requestSuggestions",
+] as const;
 
 function isModelStreamActivity(chunk: { type: string }) {
   return !["start", "start-step", "finish-step", "finish", "raw"].includes(
     chunk.type
   );
+}
+
+function getUserMessageText(message: PostRequestBody["message"]) {
+  if (!message) {
+    return "";
+  }
+
+  return message.parts
+    .filter((part) => part.type === "text")
+    .map((part) => part.text)
+    .join("\n")
+    .trim();
 }
 
 function getStreamContext() {
@@ -78,8 +115,15 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { id, message, messages, selectedChatModel, selectedVisibilityType } =
-      requestBody;
+    const {
+      id,
+      incognito,
+      message,
+      messages,
+      projectId,
+      selectedChatModel,
+      selectedVisibilityType,
+    } = requestBody;
 
     const [botIdResult, session] = await Promise.all([
       checkBotId().catch(() => null),
@@ -94,35 +138,40 @@ export async function POST(request: Request) {
       return new ChatbotError("unauthorized:chat").toResponse();
     }
 
+    if (incognito && projectId) {
+      return new ChatbotError("bad_request:api").toResponse();
+    }
+
     const chatModel = allowedModelIds.has(selectedChatModel)
       ? selectedChatModel
       : DEFAULT_CHAT_MODEL;
 
     await checkIpRateLimit(ipAddress(request));
 
-    const userType: UserType = session.user.type;
-
-    const messageCount = await getMessageCountByUserId({
-      differenceInHours: 1,
-      id: session.user.id,
+    const messageQuota = await consumeQuota({
+      resource: "messages",
+      userId: session.user.id,
     });
-
-    if (messageCount > entitlementsByUserType[userType].maxMessagesPerHour) {
+    if (!messageQuota.allowed) {
       return new ChatbotError("rate_limit:chat").toResponse();
     }
 
     const isToolApprovalFlow = Boolean(messages);
-
-    const chat = await getChatById({ id });
+    const chat = incognito ? null : await getChatById({ id });
     let messagesFromDb: DBMessage[] = [];
     let titlePromise: Promise<string> | null = null;
+    let effectiveProjectId = incognito ? null : (projectId ?? null);
 
     if (chat) {
       if (chat.userId !== session.user.id) {
         return new ChatbotError("forbidden:chat").toResponse();
       }
+      if (projectId && chat.projectId && chat.projectId !== projectId) {
+        return new ChatbotError("forbidden:chat").toResponse();
+      }
+      effectiveProjectId = projectId ?? chat.projectId ?? null;
       messagesFromDb = await getMessagesByChatId({ id });
-    } else if (message?.role === "user") {
+    } else if (!incognito && message?.role === "user") {
       await saveChat({
         id,
         title: "New chat",
@@ -134,7 +183,9 @@ export async function POST(request: Request) {
 
     let uiMessages: ChatMessage[];
 
-    if (isToolApprovalFlow && messages) {
+    if (incognito && messages) {
+      uiMessages = messages as ChatMessage[];
+    } else if (isToolApprovalFlow && messages) {
       const dbMessages = convertToUIMessages(messagesFromDb);
       const approvalStates = new Map(
         messages.flatMap(
@@ -171,7 +222,6 @@ export async function POST(request: Request) {
     }
 
     const { longitude, latitude, city, country } = geolocation(request);
-
     const requestHints: RequestHints = {
       city,
       country,
@@ -179,7 +229,39 @@ export async function POST(request: Request) {
       longitude,
     };
 
-    if (message?.role === "user") {
+    let projectContextPrompt: string | null = null;
+    if (!incognito && effectiveProjectId && message?.role === "user") {
+      const userMessageText = getUserMessageText(message);
+      if (userMessageText) {
+        const projectContext = await retrieveProjectContext({
+          chatId: id,
+          message: userMessageText,
+          projectId: effectiveProjectId,
+          userId: session.user.id,
+        });
+
+        if (!projectContext) {
+          return new ChatbotError("forbidden:chat").toResponse();
+        }
+
+        projectContextPrompt = formatProjectContextForPrompt(projectContext);
+      }
+    }
+
+    let memoryContextPrompt: string | null = null;
+    if (!incognito) {
+      try {
+        const memoryContext = await getUserMemoryContext(session.user.id);
+        memoryContextPrompt = memoryContext.prompt;
+      } catch (error) {
+        console.warn(
+          "Memory context unavailable; continuing without it",
+          error
+        );
+      }
+    }
+
+    if (!incognito && message?.role === "user") {
       await saveMessages({
         messages: [
           {
@@ -201,6 +283,18 @@ export async function POST(request: Request) {
     const supportsTools = capabilities?.tools === true;
 
     const modelMessages = await convertToModelMessages(uiMessages);
+    const baseInstructions = systemPrompt({ requestHints, supportsTools });
+    const privacyInstructions = incognito
+      ? "This is an incognito chat. Do not claim to remember this conversation later. Persistent memory, project knowledge, connectors, code execution, generated files, artifacts, and resumable chat storage are disabled for this request."
+      : null;
+    const instructions = [
+      baseInstructions,
+      privacyInstructions,
+      memoryContextPrompt,
+      projectContextPrompt,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
 
     const stream = createUIMessageStream({
       execute: async ({ writer: dataStream }) => {
@@ -266,18 +360,14 @@ export async function POST(request: Request) {
           clearHealthCheckTimer();
         };
 
+        const activeTools = incognito
+          ? INCOGNITO_ACTIVE_TOOLS
+          : PERSISTENT_ACTIVE_TOOLS;
+
         const result = streamText({
           activeTools:
-            isReasoningModel && !supportsTools
-              ? []
-              : [
-                  "getWeather",
-                  "createDocument",
-                  "editDocument",
-                  "updateDocument",
-                  "requestSuggestions",
-                ],
-          instructions: systemPrompt({ requestHints, supportsTools }),
+            isReasoningModel && !supportsTools ? [] : [...activeTools],
+          instructions,
           messages: modelMessages,
           model: getLanguageModel(chatModel),
           onAbort() {
@@ -304,17 +394,22 @@ export async function POST(request: Request) {
           },
           stopWhen: isStepCount(5),
           telemetry: {
-            functionId: "stream-text",
+            functionId: incognito ? "stream-text-incognito" : "stream-text",
             isEnabled: isProductionEnvironment,
           },
           tools: {
+            codeExecution: codeExecution({ userId: session.user.id }),
             createDocument: createDocument({
               dataStream,
               modelId: chatModel,
               session,
             }),
+            deepResearch: deepResearch({ userId: session.user.id }),
             editDocument: editDocument({ dataStream, session }),
+            generateFile: generateFile({ userId: session.user.id }),
             getWeather,
+            mcpAction: mcpAction({ userId: session.user.id }),
+            memory: memoryTool({ userId: session.user.id }),
             requestSuggestions: requestSuggestions({
               dataStream,
               modelId: chatModel,
@@ -325,6 +420,7 @@ export async function POST(request: Request) {
               modelId: chatModel,
               session,
             }),
+            webSearch: webSearch({ userId: session.user.id }),
           },
         });
 
@@ -347,6 +443,10 @@ export async function POST(request: Request) {
       },
       generateId: generateUUID,
       onEnd: async ({ messages: finishedMessages }) => {
+        if (incognito) {
+          return;
+        }
+
         if (isToolApprovalFlow) {
           await Promise.all(
             finishedMessages.map(async (finishedMsg) => {
@@ -388,23 +488,14 @@ export async function POST(request: Request) {
           });
         }
       },
-      onError: (error) => {
-        if (
-          error instanceof Error &&
-          error.message?.includes(
-            "AI Gateway requires a valid credit card on file to service requests"
-          )
-        ) {
-          return "AI Gateway requires a valid credit card on file to service requests. Please visit https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%3Fmodal%3Dadd-credit-card to add a card and unlock your free credits.";
-        }
-        return "Oops, an error occurred!";
-      },
-      originalMessages: isToolApprovalFlow ? uiMessages : undefined,
+      onError: () => "Oops, an error occurred!",
+      originalMessages:
+        !incognito && isToolApprovalFlow ? uiMessages : undefined,
     });
 
     return createUIMessageStreamResponse({
       async consumeSseStream({ stream: sseStream }) {
-        if (!process.env.REDIS_URL) {
+        if (incognito || !process.env.REDIS_URL) {
           return;
         }
         try {
@@ -428,15 +519,6 @@ export async function POST(request: Request) {
 
     if (error instanceof ChatbotError) {
       return error.toResponse();
-    }
-
-    if (
-      error instanceof Error &&
-      error.message?.includes(
-        "AI Gateway requires a valid credit card on file to service requests"
-      )
-    ) {
-      return new ChatbotError("bad_request:activate_gateway").toResponse();
     }
 
     console.error("Unhandled error in chat API:", error, { vercelId });
