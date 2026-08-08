@@ -8,9 +8,7 @@ import {
 
 export async function getUserMemoryContext(userId: string) {
   const credential = await getOrCreateOnyxCredential(userId);
-  const personalization = await getOnyxPersonalization(
-    credential.bearerToken
-  );
+  const personalization = await getOnyxPersonalization(credential.bearerToken);
 
   if (!personalization.use_memories || personalization.memories.length === 0) {
     return {
