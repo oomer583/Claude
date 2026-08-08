@@ -23,6 +23,7 @@ import {
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { createDocument } from "@/lib/ai/tools/create-document";
+import { deepResearch } from "@/lib/ai/tools/deep-research";
 import { editDocument } from "@/lib/ai/tools/edit-document";
 import { getWeather } from "@/lib/ai/tools/get-weather";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
@@ -52,7 +53,7 @@ import { convertToUIMessages, generateUUID } from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const HEALTH_CHECK_DELAY_MS = 9000;
 
@@ -324,6 +325,7 @@ export async function POST(request: Request) {
               : [
                   "getWeather",
                   "webSearch",
+                  "deepResearch",
                   "createDocument",
                   "editDocument",
                   "updateDocument",
@@ -365,6 +367,7 @@ export async function POST(request: Request) {
               modelId: chatModel,
               session,
             }),
+            deepResearch: deepResearch({ userId: session.user.id }),
             editDocument: editDocument({ dataStream, session }),
             getWeather,
             requestSuggestions: requestSuggestions({
