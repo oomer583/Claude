@@ -3,14 +3,14 @@ import "server-only";
 import { onyxRequest } from "./client";
 import type { OnyxProject, OnyxUploadResult, OnyxUserFile } from "./types";
 
-export async function listOnyxProjects(bearerToken: string) {
+export function listOnyxProjects(bearerToken: string) {
   return onyxRequest<OnyxProject[]>({
-    path: "/user/projects",
     bearerToken,
+    path: "/user/projects",
   });
 }
 
-export async function createOnyxProject({
+export function createOnyxProject({
   bearerToken,
   name,
 }: {
@@ -19,13 +19,13 @@ export async function createOnyxProject({
 }) {
   const params = new URLSearchParams({ name });
   return onyxRequest<OnyxProject>({
-    path: `/user/projects/create?${params.toString()}`,
     bearerToken,
     init: { method: "POST" },
+    path: `/user/projects/create?${params.toString()}`,
   });
 }
 
-export async function getOnyxProject({
+export function getOnyxProject({
   bearerToken,
   projectId,
 }: {
@@ -33,12 +33,12 @@ export async function getOnyxProject({
   projectId: number;
 }) {
   return onyxRequest<OnyxProject>({
-    path: `/user/projects/${projectId}`,
     bearerToken,
+    path: `/user/projects/${projectId}`,
   });
 }
 
-export async function listOnyxProjectFiles({
+export function listOnyxProjectFiles({
   bearerToken,
   projectId,
 }: {
@@ -46,19 +46,19 @@ export async function listOnyxProjectFiles({
   projectId: number;
 }) {
   return onyxRequest<OnyxUserFile[]>({
-    path: `/user/projects/files/${projectId}`,
     bearerToken,
+    path: `/user/projects/files/${projectId}`,
   });
 }
 
-export async function uploadOnyxProjectFiles({
+export function uploadOnyxProjectFiles({
   bearerToken,
-  projectId,
   files,
+  projectId,
 }: {
   bearerToken: string;
-  projectId: number;
   files: File[];
+  projectId: number;
 }) {
   const form = new FormData();
   form.set("project_id", String(projectId));
@@ -67,44 +67,44 @@ export async function uploadOnyxProjectFiles({
   }
 
   return onyxRequest<OnyxUploadResult>({
-    path: "/user/projects/file/upload",
     bearerToken,
     init: {
-      method: "POST",
       body: form,
+      method: "POST",
     },
+    path: "/user/projects/file/upload",
     timeoutMs: 60_000,
   });
 }
 
-export async function linkOnyxFileToProject({
+export function linkOnyxFileToProject({
   bearerToken,
-  projectId,
   fileId,
+  projectId,
 }: {
   bearerToken: string;
-  projectId: number;
   fileId: string;
+  projectId: number;
 }) {
   return onyxRequest<OnyxUserFile>({
-    path: `/user/projects/${projectId}/files/${fileId}`,
     bearerToken,
     init: { method: "POST" },
+    path: `/user/projects/${projectId}/files/${fileId}`,
   });
 }
 
-export async function unlinkOnyxFileFromProject({
+export function unlinkOnyxFileFromProject({
   bearerToken,
-  projectId,
   fileId,
+  projectId,
 }: {
   bearerToken: string;
-  projectId: number;
   fileId: string;
+  projectId: number;
 }) {
   return onyxRequest<void>({
-    path: `/user/projects/${projectId}/files/${fileId}`,
     bearerToken,
     init: { method: "DELETE" },
+    path: `/user/projects/${projectId}/files/${fileId}`,
   });
 }
