@@ -67,11 +67,14 @@ function ConnectorCard({ busy, connector, onRefresh }: ConnectorCardProps) {
       toast.error("Fill every required credential field");
       return;
     }
-    const response = await fetch(`/api/connectors/${connector.id}/credentials`, {
-      body: JSON.stringify({ credentials }),
-      headers: { "content-type": "application/json" },
-      method: "POST",
-    });
+    const response = await fetch(
+      `/api/connectors/${connector.id}/credentials`,
+      {
+        body: JSON.stringify({ credentials }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }
+    );
     if (!response.ok) {
       toast.error("Could not save connector credentials");
       return;
@@ -81,9 +84,12 @@ function ConnectorCard({ busy, connector, onRefresh }: ConnectorCardProps) {
   }, [connector.id, credentials, fields, onRefresh]);
 
   const disconnect = useCallback(async () => {
-    const response = await fetch(`/api/connectors/${connector.id}/credentials`, {
-      method: "DELETE",
-    });
+    const response = await fetch(
+      `/api/connectors/${connector.id}/credentials`,
+      {
+        method: "DELETE",
+      }
+    );
     if (!response.ok) {
       toast.error("Could not disconnect connector");
       return;
@@ -98,8 +104,7 @@ function ConnectorCard({ busy, connector, onRefresh }: ConnectorCardProps) {
         <div>
           <h2 className="font-medium text-sm">{connector.name}</h2>
           <p className="mt-1 text-muted-foreground text-xs">
-            {connector.description ||
-              `${connector.tool_count} available tools`}
+            {connector.description || `${connector.tool_count} available tools`}
           </p>
         </div>
         <span className="rounded-full border border-border px-2.5 py-1 text-xs">
