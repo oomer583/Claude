@@ -3,7 +3,7 @@ import "server-only";
 import { onyxRequest } from "./client";
 import type { OnyxChatResponse } from "./types";
 
-export async function getOnyxProjectContext({
+export function getOnyxProjectContext({
   bearerToken,
   message,
   onyxChatSessionId,
