@@ -3,6 +3,7 @@ import { auth } from "@/app/(auth)/auth";
 import { getOrCreateOnyxCredential } from "@/lib/db/projects";
 import { ChatbotError } from "@/lib/errors";
 import { runOnyxMcpAction } from "@/lib/integrations/onyx/mcp";
+import { consumeQuota } from "@/lib/usage/quotas";
 
 const bodySchema = z.object({
   instruction: z.string().trim().min(1).max(4000),
@@ -19,6 +20,17 @@ export async function POST(request: Request) {
     return new ChatbotError("bad_request:api").toResponse();
   }
 
+  const quota = await consumeQuota({
+    resource: "mcp",
+    userId: session.user.id,
+  });
+  if (!quota.allowed) {
+    return Response.json(
+      { error: "Connector action limit reached", quota },
+      { status: 429 }
+    );
+  }
+
   const credential = await getOrCreateOnyxCredential(session.user.id);
   const result = await runOnyxMcpAction({
     bearerToken: credential.bearerToken,
@@ -26,6 +38,7 @@ export async function POST(request: Request) {
   });
 
   return Response.json({
+    quota,
     result: result.answer_citationless || result.answer,
   });
 }
