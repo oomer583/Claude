@@ -1,4 +1,7 @@
-const baseUrl = (process.env.APP_URL ?? "http://127.0.0.1:3000").replace(/\/$/, "");
+const baseUrl = (process.env.APP_URL ?? "http://127.0.0.1:3000").replace(
+  /\/$/,
+  ""
+);
 
 async function check(path) {
   const response = await fetch(`${baseUrl}${path}`, {
