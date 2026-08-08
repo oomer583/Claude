@@ -19,7 +19,9 @@ export function memoryTool({ userId }: { userId: string }) {
         .trim()
         .min(1)
         .max(1000)
-        .describe("A concise standalone statement describing what to remember."),
+        .describe(
+          "A concise standalone statement describing what to remember."
+        ),
     }),
   });
 }
