@@ -257,7 +257,10 @@ export async function POST(request: Request) {
         const memoryContext = await getUserMemoryContext(session.user.id);
         memoryContextPrompt = memoryContext.prompt;
       } catch (error) {
-        console.warn("Memory context unavailable; continuing without it", error);
+        console.warn(
+          "Memory context unavailable; continuing without it",
+          error
+        );
       }
     }
 
