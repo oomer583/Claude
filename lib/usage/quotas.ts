@@ -19,6 +19,12 @@ type QuotaRule = {
   windowSeconds: number;
 };
 
+export type QuotaStatus = QuotaRule & {
+  remaining: number;
+  resetAt: Date | null;
+  used: number;
+};
+
 const MONTH_SECONDS = 30 * 24 * 60 * 60;
 const DAY_SECONDS = 24 * 60 * 60;
 const HOUR_SECONDS = 60 * 60;
@@ -83,6 +89,22 @@ function getWindowBucket(windowSeconds: number) {
   return Math.floor(Date.now() / (windowSeconds * 1000));
 }
 
+function getQuotaKey({
+  resource,
+  userId,
+  windowSeconds,
+}: {
+  resource: QuotaResource;
+  userId: string;
+  windowSeconds: number;
+}) {
+  const bucket = getWindowBucket(windowSeconds);
+  return {
+    bucket,
+    key: `quota:${resource}:${userId}:${bucket}`,
+  };
+}
+
 export async function getPlanForUser(userId: string): Promise<Plan> {
   const entitlement = await getUserEntitlement(userId);
   return entitlement.plan;
@@ -128,8 +150,11 @@ export async function consumeQuota({
     };
   }
 
-  const bucket = getWindowBucket(rule.windowSeconds);
-  const key = `quota:${resource}:${userId}:${bucket}`;
+  const { bucket, key } = getQuotaKey({
+    resource,
+    userId,
+    windowSeconds: rule.windowSeconds,
+  });
   const current = await redis.incrBy(key, cost);
 
   if (current === cost) {
@@ -148,6 +173,43 @@ export async function consumeQuota({
   };
 }
 
+async function getResourceStatus({
+  plan,
+  redis,
+  resource,
+  userId,
+}: {
+  plan: Exclude<Plan, "owner">;
+  redis: RedisClientType | null;
+  resource: QuotaResource;
+  userId: string;
+}): Promise<QuotaStatus> {
+  const rule = PLAN_QUOTAS[plan][resource];
+  if (!redis) {
+    return {
+      ...rule,
+      remaining: rule.limit,
+      resetAt: null,
+      used: 0,
+    };
+  }
+
+  const { bucket, key } = getQuotaKey({
+    resource,
+    userId,
+    windowSeconds: rule.windowSeconds,
+  });
+  const current = Number((await redis.get(key)) ?? 0);
+  const used = Number.isFinite(current) ? Math.max(0, current) : 0;
+
+  return {
+    ...rule,
+    remaining: Math.max(0, rule.limit - used),
+    resetAt: new Date((bucket + 1) * rule.windowSeconds * 1000),
+    used,
+  };
+}
+
 export async function getQuotaSnapshot(userId: string) {
   const plan = await getPlanForUser(userId);
   if (plan === "owner") {
@@ -157,8 +219,21 @@ export async function getQuotaSnapshot(userId: string) {
     };
   }
 
+  const redis = await getRedisClient();
+  if (!redis && process.env.NODE_ENV === "production") {
+    throw new Error("Quota backend is unavailable: REDIS_URL is not configured");
+  }
+
+  const resources = Object.keys(PLAN_QUOTAS[plan]) as QuotaResource[];
+  const statuses = await Promise.all(
+    resources.map(async (resource) => [
+      resource,
+      await getResourceStatus({ plan, redis, resource, userId }),
+    ] as const)
+  );
+
   return {
-    limits: PLAN_QUOTAS[plan],
+    limits: Object.fromEntries(statuses) as Record<QuotaResource, QuotaStatus>,
     plan,
   };
 }
