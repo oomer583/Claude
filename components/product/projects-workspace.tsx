@@ -1,7 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import type { ChangeEvent, MouseEvent } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
@@ -11,15 +12,31 @@ type Project = {
   name: string;
 };
 
+type ProjectFile = {
+  chat_file_type: string;
+  created_at: string;
+  id: string;
+  name: string;
+  status: string;
+};
+
 export function ProjectsWorkspace() {
+  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [name, setName] = useState("");
   const [instructions, setInstructions] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null
   );
+  const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [isBusy, setIsBusy] = useState(false);
+  const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+
+  const selectedProject = useMemo(
+    () => projects.find((project) => project.id === selectedProjectId) ?? null,
+    [projects, selectedProjectId]
+  );
 
   const loadProjects = useCallback(async () => {
     const response = await fetch("/api/projects", { cache: "no-store" });
@@ -31,9 +48,35 @@ export function ProjectsWorkspace() {
     setSelectedProjectId((current) => current ?? loaded[0]?.id ?? null);
   }, []);
 
+  const loadProjectFiles = useCallback(async (projectId: string) => {
+    setIsLoadingFiles(true);
+    try {
+      const response = await fetch(`/api/projects/${projectId}/files`, {
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        throw new Error("Unable to load project files");
+      }
+      setProjectFiles((await response.json()) as ProjectFile[]);
+    } finally {
+      setIsLoadingFiles(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadProjects().catch(() => toast.error("Could not load projects"));
   }, [loadProjects]);
+
+  useEffect(() => {
+    if (!selectedProjectId) {
+      setProjectFiles([]);
+      return;
+    }
+    loadProjectFiles(selectedProjectId).catch(() => {
+      setProjectFiles([]);
+      toast.error("Could not load project knowledge files");
+    });
+  }, [loadProjectFiles, selectedProjectId]);
 
   const createProject = useCallback(async () => {
     if (!name.trim()) {
@@ -81,11 +124,23 @@ export function ProjectsWorkspace() {
         return;
       }
       setFiles([]);
+      await loadProjectFiles(selectedProjectId);
       toast.success("Files added to project knowledge");
     } finally {
       setIsBusy(false);
     }
-  }, [files, selectedProjectId]);
+  }, [files, loadProjectFiles, selectedProjectId]);
+
+  const startProjectChat = useCallback(() => {
+    if (!(selectedProjectId && selectedProject)) {
+      return;
+    }
+    const params = new URLSearchParams({
+      project: selectedProjectId,
+      projectName: selectedProject.name,
+    });
+    router.push(`/?${params.toString()}`);
+  }, [router, selectedProject, selectedProjectId]);
 
   const handleNameChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -128,8 +183,8 @@ export function ProjectsWorkspace() {
         <p className="text-muted-foreground text-sm">Workspace</p>
         <h1 className="mt-1 font-semibold text-2xl tracking-tight">Projects</h1>
         <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
-          Create reusable knowledge spaces, attach instructions, and upload
-          files for project-aware conversations.
+          Create reusable knowledge spaces, attach instructions, upload files,
+          and launch a project-aware conversation directly from here.
         </p>
       </div>
 
@@ -156,7 +211,16 @@ export function ProjectsWorkspace() {
         </div>
 
         <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
-          <h2 className="font-medium text-sm">Project knowledge</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-medium text-sm">Project knowledge</h2>
+            <Button
+              disabled={!selectedProjectId}
+              onClick={startProjectChat}
+              size="sm"
+            >
+              Chat in project
+            </Button>
+          </div>
           <select
             className="mt-4 h-9 w-full rounded-lg border border-border bg-background px-3 text-sm"
             onChange={handleProjectChange}
@@ -185,6 +249,31 @@ export function ProjectsWorkspace() {
           >
             Upload to project
           </Button>
+
+          <div className="mt-5 border-border/60 border-t pt-4">
+            <p className="font-medium text-xs">Knowledge files</p>
+            {isLoadingFiles ? (
+              <p className="mt-2 text-muted-foreground text-xs">Loading...</p>
+            ) : projectFiles.length === 0 ? (
+              <p className="mt-2 text-muted-foreground text-xs">
+                No files in this project yet.
+              </p>
+            ) : (
+              <div className="mt-2 flex max-h-48 flex-col gap-2 overflow-auto">
+                {projectFiles.map((file) => (
+                  <div
+                    className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2"
+                    key={file.id}
+                  >
+                    <span className="min-w-0 truncate text-xs">{file.name}</span>
+                    <span className="shrink-0 text-muted-foreground text-[11px]">
+                      {file.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
