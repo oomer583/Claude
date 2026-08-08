@@ -46,6 +46,8 @@ function formatWindow(seconds: number) {
 
 export function UsageAndPromo() {
   const [code, setCode] = useState("");
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRedeeming, setIsRedeeming] = useState(false);
   const [snapshot, setSnapshot] = useState<QuotaSnapshot | null>(null);
@@ -105,9 +107,44 @@ export function UsageAndPromo() {
     }
   }, [code, loadUsage]);
 
+  const exportData = useCallback(() => {
+    window.location.href = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/account`;
+  }, []);
+
+  const deleteAccount = useCallback(async () => {
+    if (deleteConfirmation !== "DELETE") {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch("/api/account", { method: "DELETE" });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        toast.error(body?.error ?? "Could not delete the account");
+        return;
+      }
+
+      window.location.href = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/`;
+    } catch {
+      toast.error("Could not delete the account");
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [deleteConfirmation]);
+
   const handleCodeChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       setCode(event.target.value);
+    },
+    []
+  );
+
+  const handleDeleteConfirmationChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setDeleteConfirmation(event.target.value);
     },
     []
   );
@@ -130,6 +167,12 @@ export function UsageAndPromo() {
     });
   }, [redeemPromo]);
 
+  const handleDeleteClick = useCallback(() => {
+    deleteAccount().catch(() => {
+      toast.error("Could not delete the account");
+    });
+  }, [deleteAccount]);
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-5 py-10 md:px-8">
       <div>
@@ -138,8 +181,7 @@ export function UsageAndPromo() {
           Plan & usage
         </h1>
         <p className="mt-2 max-w-xl text-muted-foreground text-sm">
-          Review your current product limits and apply a promo code to your
-          account.
+          Review your current product limits and manage account data.
         </p>
       </div>
 
@@ -203,6 +245,49 @@ export function UsageAndPromo() {
             type="button"
           >
             {isRedeeming ? "Applying..." : "Apply code"}
+          </Button>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
+        <p className="font-medium text-sm">Your data</p>
+        <p className="mt-1 text-muted-foreground text-sm">
+          Download a JSON copy of account profile data, projects, chats,
+          messages, documents, suggestions, plan information, and redemption
+          timestamps. Secrets and API credentials are never included.
+        </p>
+        <Button
+          className="mt-4"
+          onClick={exportData}
+          type="button"
+          variant="outline"
+        >
+          Export my data
+        </Button>
+      </section>
+
+      <section className="rounded-2xl border border-destructive/40 bg-card p-5 shadow-sm">
+        <p className="font-medium text-sm">Delete account</p>
+        <p className="mt-1 text-muted-foreground text-sm">
+          This permanently deletes product data and revokes the linked Onyx
+          service credential. Type DELETE to enable the action.
+        </p>
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <input
+            aria-label="Delete confirmation"
+            autoComplete="off"
+            className="h-9 min-w-0 flex-1 rounded-lg border border-border bg-background px-3 text-sm outline-none"
+            onChange={handleDeleteConfirmationChange}
+            placeholder="Type DELETE"
+            value={deleteConfirmation}
+          />
+          <Button
+            disabled={deleteConfirmation !== "DELETE" || isDeleting}
+            onClick={handleDeleteClick}
+            type="button"
+            variant="destructive"
+          >
+            {isDeleting ? "Deleting..." : "Delete account"}
           </Button>
         </div>
       </section>

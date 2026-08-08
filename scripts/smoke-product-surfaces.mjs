@@ -19,6 +19,9 @@ const routes = [
   "/connectors",
   "/tools",
   "/settings",
+  "/privacy",
+  "/terms",
+  "/api/account",
   "/api/health/live",
   "/api/health/ready",
 ];

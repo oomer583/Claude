@@ -40,3 +40,16 @@ export async function provisionOnyxCredential(
     onyxUserId: descriptor.user_id,
   };
 }
+
+export async function revokeOnyxCredential(apiKeyId: number) {
+  const adminKey = process.env.ONYX_ADMIN_API_KEY?.trim();
+  if (!adminKey) {
+    throw new Error("ONYX_ADMIN_API_KEY is required to revoke Onyx identities");
+  }
+
+  await onyxRequest<void>({
+    bearerToken: adminKey,
+    init: { method: "DELETE" },
+    path: `/admin/api-key/${apiKeyId}`,
+  });
+}
