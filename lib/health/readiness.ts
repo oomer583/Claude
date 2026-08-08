@@ -1,7 +1,7 @@
 import "server-only";
 
-import { createClient, type RedisClientType } from "redis";
 import postgres from "postgres";
+import { createClient, type RedisClientType } from "redis";
 
 type DependencyName = "postgres" | "redis" | "router" | "onyx";
 
@@ -86,7 +86,9 @@ function getOnyxHealthUrl() {
   return `${configured.replace(/\/$/, "")}/health`;
 }
 
-async function timedCheck(check: () => Promise<void>): Promise<DependencyStatus> {
+async function timedCheck(
+  check: () => Promise<void>
+): Promise<DependencyStatus> {
   const startedAt = performance.now();
   try {
     await check();
