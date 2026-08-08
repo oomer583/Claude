@@ -2,6 +2,7 @@ import { z } from "zod";
 import { auth } from "@/app/(auth)/auth";
 import { getOrCreateOnyxCredential } from "@/lib/db/projects";
 import { generateOnyxFile } from "@/lib/integrations/onyx/file-generation";
+import { consumeQuota } from "@/lib/usage/quotas";
 
 const requestSchema = z.object({
   filename: z
@@ -32,6 +33,17 @@ export async function POST(request: Request) {
     );
   }
 
+  const quota = await consumeQuota({
+    resource: "fileGeneration",
+    userId: session.user.id,
+  });
+  if (!quota.allowed) {
+    return Response.json(
+      { error: "File generation limit reached", quota },
+      { status: 429 }
+    );
+  }
+
   try {
     const credential = await getOrCreateOnyxCredential(session.user.id);
     const result = await generateOnyxFile({
@@ -42,6 +54,7 @@ export async function POST(request: Request) {
     return Response.json({
       answer: result.answer_citationless || result.answer,
       format: parsed.data.format,
+      quota,
     });
   } catch (error) {
     console.error("File generation failed", error);
