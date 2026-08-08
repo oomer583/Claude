@@ -26,9 +26,12 @@ export function HistorySearchWorkspace() {
     }
     setBusy(true);
     try {
-      const response = await fetch(`/api/history/search?q=${encodeURIComponent(normalized)}`, {
-        cache: "no-store",
-      });
+      const response = await fetch(
+        `/api/history/search?q=${encodeURIComponent(normalized)}`,
+        {
+          cache: "no-store",
+        }
+      );
       if (!response.ok) {
         toast.error("Could not search chats");
         return;
@@ -47,17 +50,23 @@ export function HistorySearchWorkspace() {
     [search]
   );
 
-  const handleQueryChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    setQuery(event.target.value);
-  }, []);
+  const handleQueryChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setQuery(event.target.value);
+    },
+    []
+  );
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-5 py-10 md:px-8">
       <div>
         <p className="text-muted-foreground text-sm">History</p>
-        <h1 className="mt-1 font-semibold text-2xl tracking-tight">Search past chats</h1>
+        <h1 className="mt-1 font-semibold text-2xl tracking-tight">
+          Search past chats
+        </h1>
         <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
-          Search your saved chat titles and message content. Results stay scoped to your account.
+          Search your saved chat titles and message content. Results stay scoped
+          to your account.
         </p>
       </div>
 
