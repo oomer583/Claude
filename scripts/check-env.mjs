@@ -12,13 +12,20 @@ const required = [
 const missing = required.filter((name) => !process.env[name]?.trim());
 
 if (missing.length > 0) {
-  console.error(`Missing required environment variables: ${missing.join(", ")}`);
+  console.error(
+    `Missing required environment variables: ${missing.join(", ")}`
+  );
   process.exit(1);
 }
 
-for (const name of ["POSTGRES_URL", "REDIS_URL", "ROUTER_BASE_URL", "ONYX_BASE_URL"]) {
+for (const name of [
+  "POSTGRES_URL",
+  "REDIS_URL",
+  "ROUTER_BASE_URL",
+  "ONYX_BASE_URL",
+]) {
   try {
-    new URL(process.env[name]);
+    URL.parse(process.env[name]);
   } catch {
     console.error(`${name} must be a valid URL`);
     process.exit(1);
