@@ -22,10 +22,13 @@ import {
 } from "@/lib/ai/models";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
+import { codeExecution } from "@/lib/ai/tools/code-execution";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { deepResearch } from "@/lib/ai/tools/deep-research";
 import { editDocument } from "@/lib/ai/tools/edit-document";
+import { generateFile } from "@/lib/ai/tools/file-generation";
 import { getWeather } from "@/lib/ai/tools/get-weather";
+import { mcpAction } from "@/lib/ai/tools/mcp-action";
 import { memoryTool } from "@/lib/ai/tools/memory";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { updateDocument } from "@/lib/ai/tools/update-document";
@@ -58,6 +61,21 @@ import { type PostRequestBody, postRequestBodySchema } from "./schema";
 export const maxDuration = 300;
 
 const HEALTH_CHECK_DELAY_MS = 9000;
+
+const INCOGNITO_ACTIVE_TOOLS = ["getWeather", "webSearch"] as const;
+const PERSISTENT_ACTIVE_TOOLS = [
+  "getWeather",
+  "webSearch",
+  "deepResearch",
+  "memory",
+  "mcpAction",
+  "codeExecution",
+  "generateFile",
+  "createDocument",
+  "editDocument",
+  "updateDocument",
+  "requestSuggestions",
+] as const;
 
 function isModelStreamActivity(chunk: { type: string }) {
   return !["start", "start-step", "finish-step", "finish", "raw"].includes(
@@ -100,6 +118,7 @@ export async function POST(request: Request) {
   try {
     const {
       id,
+      incognito,
       message,
       messages,
       projectId,
@@ -120,6 +139,10 @@ export async function POST(request: Request) {
       return new ChatbotError("unauthorized:chat").toResponse();
     }
 
+    if (incognito && projectId) {
+      return new ChatbotError("bad_request:api").toResponse();
+    }
+
     const chatModel = allowedModelIds.has(selectedChatModel)
       ? selectedChatModel
       : DEFAULT_CHAT_MODEL;
@@ -127,7 +150,6 @@ export async function POST(request: Request) {
     await checkIpRateLimit(ipAddress(request));
 
     const userType: UserType = session.user.type;
-
     const messageCount = await getMessageCountByUserId({
       differenceInHours: 1,
       id: session.user.id,
@@ -138,11 +160,10 @@ export async function POST(request: Request) {
     }
 
     const isToolApprovalFlow = Boolean(messages);
-
-    const chat = await getChatById({ id });
+    const chat = incognito ? null : await getChatById({ id });
     let messagesFromDb: DBMessage[] = [];
     let titlePromise: Promise<string> | null = null;
-    let effectiveProjectId = projectId ?? null;
+    let effectiveProjectId = incognito ? null : (projectId ?? null);
 
     if (chat) {
       if (chat.userId !== session.user.id) {
@@ -153,7 +174,7 @@ export async function POST(request: Request) {
       }
       effectiveProjectId = projectId ?? chat.projectId ?? null;
       messagesFromDb = await getMessagesByChatId({ id });
-    } else if (message?.role === "user") {
+    } else if (!incognito && message?.role === "user") {
       await saveChat({
         id,
         title: "New chat",
@@ -165,7 +186,9 @@ export async function POST(request: Request) {
 
     let uiMessages: ChatMessage[];
 
-    if (isToolApprovalFlow && messages) {
+    if (incognito && messages) {
+      uiMessages = messages as ChatMessage[];
+    } else if (isToolApprovalFlow && messages) {
       const dbMessages = convertToUIMessages(messagesFromDb);
       const approvalStates = new Map(
         messages.flatMap(
@@ -202,7 +225,6 @@ export async function POST(request: Request) {
     }
 
     const { longitude, latitude, city, country } = geolocation(request);
-
     const requestHints: RequestHints = {
       city,
       country,
@@ -211,7 +233,7 @@ export async function POST(request: Request) {
     };
 
     let projectContextPrompt: string | null = null;
-    if (effectiveProjectId && message?.role === "user") {
+    if (!incognito && effectiveProjectId && message?.role === "user") {
       const userMessageText = getUserMessageText(message);
       if (userMessageText) {
         const projectContext = await retrieveProjectContext({
@@ -230,14 +252,16 @@ export async function POST(request: Request) {
     }
 
     let memoryContextPrompt: string | null = null;
-    try {
-      const memoryContext = await getUserMemoryContext(session.user.id);
-      memoryContextPrompt = memoryContext.prompt;
-    } catch (error) {
-      console.warn("Memory context unavailable; continuing without it", error);
+    if (!incognito) {
+      try {
+        const memoryContext = await getUserMemoryContext(session.user.id);
+        memoryContextPrompt = memoryContext.prompt;
+      } catch (error) {
+        console.warn("Memory context unavailable; continuing without it", error);
+      }
     }
 
-    if (message?.role === "user") {
+    if (!incognito && message?.role === "user") {
       await saveMessages({
         messages: [
           {
@@ -260,8 +284,12 @@ export async function POST(request: Request) {
 
     const modelMessages = await convertToModelMessages(uiMessages);
     const baseInstructions = systemPrompt({ requestHints, supportsTools });
+    const privacyInstructions = incognito
+      ? "This is an incognito chat. Do not claim to remember this conversation later. Persistent memory, project knowledge, connectors, code execution, generated files, artifacts, and resumable chat storage are disabled for this request."
+      : null;
     const instructions = [
       baseInstructions,
+      privacyInstructions,
       memoryContextPrompt,
       projectContextPrompt,
     ]
@@ -332,20 +360,13 @@ export async function POST(request: Request) {
           clearHealthCheckTimer();
         };
 
+        const activeTools = incognito
+          ? INCOGNITO_ACTIVE_TOOLS
+          : PERSISTENT_ACTIVE_TOOLS;
+
         const result = streamText({
           activeTools:
-            isReasoningModel && !supportsTools
-              ? []
-              : [
-                  "getWeather",
-                  "webSearch",
-                  "deepResearch",
-                  "memory",
-                  "createDocument",
-                  "editDocument",
-                  "updateDocument",
-                  "requestSuggestions",
-                ],
+            isReasoningModel && !supportsTools ? [] : [...activeTools],
           instructions,
           messages: modelMessages,
           model: getLanguageModel(chatModel),
@@ -373,10 +394,11 @@ export async function POST(request: Request) {
           },
           stopWhen: isStepCount(5),
           telemetry: {
-            functionId: "stream-text",
+            functionId: incognito ? "stream-text-incognito" : "stream-text",
             isEnabled: isProductionEnvironment,
           },
           tools: {
+            codeExecution: codeExecution({ userId: session.user.id }),
             createDocument: createDocument({
               dataStream,
               modelId: chatModel,
@@ -384,7 +406,9 @@ export async function POST(request: Request) {
             }),
             deepResearch: deepResearch({ userId: session.user.id }),
             editDocument: editDocument({ dataStream, session }),
+            generateFile: generateFile({ userId: session.user.id }),
             getWeather,
+            mcpAction: mcpAction({ userId: session.user.id }),
             memory: memoryTool({ userId: session.user.id }),
             requestSuggestions: requestSuggestions({
               dataStream,
@@ -419,6 +443,10 @@ export async function POST(request: Request) {
       },
       generateId: generateUUID,
       onEnd: async ({ messages: finishedMessages }) => {
+        if (incognito) {
+          return;
+        }
+
         if (isToolApprovalFlow) {
           await Promise.all(
             finishedMessages.map(async (finishedMsg) => {
@@ -461,12 +489,13 @@ export async function POST(request: Request) {
         }
       },
       onError: () => "Oops, an error occurred!",
-      originalMessages: isToolApprovalFlow ? uiMessages : undefined,
+      originalMessages:
+        !incognito && isToolApprovalFlow ? uiMessages : undefined,
     });
 
     return createUIMessageStreamResponse({
       async consumeSseStream({ stream: sseStream }) {
-        if (!process.env.REDIS_URL) {
+        if (incognito || !process.env.REDIS_URL) {
           return;
         }
         try {
