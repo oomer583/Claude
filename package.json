@@ -16,6 +16,10 @@
     "db:pull": "drizzle-kit pull",
     "db:check": "drizzle-kit check",
     "db:up": "drizzle-kit up",
+    "deploy:secrets": "node scripts/generate-secrets.mjs",
+    "deploy:check": "node --env-file=.env scripts/check-env.mjs",
+    "deploy:preflight": "docker compose exec app node scripts/preflight-upstreams.mjs",
+    "deploy:smoke": "node scripts/smoke-health.mjs",
     "test": "export PLAYWRIGHT=True && pnpm exec playwright test"
   },
   "dependencies": {
@@ -35,7 +39,7 @@
     "@streamdown/math": "^1.0.2",
     "@streamdown/mermaid": "^1.0.2",
     "@vercel/analytics": "^2.0.1",
-    "@vercel/blob": "^0.24.1",
+    "@vercel/blob": "0.24.1",
     "@vercel/functions": "^3.7.5",
     "@vercel/otel": "^1.12.0",
     "ai": "7.0.15",
