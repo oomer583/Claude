@@ -24,9 +24,7 @@ for (const name of [
   "ROUTER_BASE_URL",
   "ONYX_BASE_URL",
 ]) {
-  try {
-    URL.parse(process.env[name]);
-  } catch {
+  if (!URL.canParse(process.env[name])) {
     console.error(`${name} must be a valid URL`);
     process.exit(1);
   }
