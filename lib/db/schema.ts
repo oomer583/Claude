@@ -75,6 +75,10 @@ export type Project = InferSelectModel<typeof project>;
 export const chat = pgTable("Chat", {
   createdAt: timestamp("createdAt").notNull(),
   id: uuid("id").primaryKey().notNull().defaultRandom(),
+  onyxChatSessionId: uuid("onyxChatSessionId"),
+  projectId: uuid("projectId").references(() => project.id, {
+    onDelete: "set null",
+  }),
   title: text("title").notNull(),
   userId: uuid("userId")
     .notNull()
