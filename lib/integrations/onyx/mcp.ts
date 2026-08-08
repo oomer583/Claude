@@ -1,6 +1,7 @@
 import "server-only";
 
 import { onyxRequest } from "./client";
+import type { OnyxChatResponse } from "./types";
 
 export type OnyxMcpServer = {
   auth_performer?: "ADMIN" | "PER_USER";
@@ -96,5 +97,35 @@ export function startOnyxMcpOAuth({
       method: "POST",
     },
     path: "/mcp/oauth/connect",
+  });
+}
+
+export function runOnyxMcpAction({
+  bearerToken,
+  instruction,
+}: {
+  bearerToken: string;
+  instruction: string;
+}) {
+  return onyxRequest<OnyxChatResponse>({
+    bearerToken,
+    init: {
+      body: JSON.stringify({
+        chat_session_info: {
+          description: "Product MCP action",
+          persona_id: 0,
+        },
+        include_citations: false,
+        message: [
+          "Use an available connected MCP tool when one is required to complete this external-service action.",
+          "Do not claim an action succeeded unless the tool result confirms it.",
+          `Requested action: ${instruction}`,
+        ].join("\n\n"),
+        stream: false,
+      }),
+      method: "POST",
+    },
+    path: "/chat/send-chat-message",
+    timeoutMs: 120_000,
   });
 }
