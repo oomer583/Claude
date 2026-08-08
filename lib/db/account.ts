@@ -89,7 +89,7 @@ export async function getOnyxIdentityForDeletion(userId: string) {
   return rows[0] ?? null;
 }
 
-export async function deleteAccountData(userId: string) {
+export function deleteAccountData(userId: string) {
   return db.transaction(async (tx) => {
     const userChats = await tx
       .select({ id: chat.id })
@@ -107,12 +107,8 @@ export async function deleteAccountData(userId: string) {
     await tx.delete(suggestion).where(eq(suggestion.userId, userId));
     await tx.delete(document).where(eq(document.userId, userId));
     await tx.delete(project).where(eq(project.userId, userId));
-    await tx
-      .delete(promoRedemption)
-      .where(eq(promoRedemption.userId, userId));
-    await tx
-      .delete(userEntitlement)
-      .where(eq(userEntitlement.userId, userId));
+    await tx.delete(promoRedemption).where(eq(promoRedemption.userId, userId));
+    await tx.delete(userEntitlement).where(eq(userEntitlement.userId, userId));
     await tx.delete(onyxIdentity).where(eq(onyxIdentity.userId, userId));
 
     const deleted = await tx
