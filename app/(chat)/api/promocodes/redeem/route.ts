@@ -13,7 +13,9 @@ export async function POST(request: Request) {
     return new ChatbotError("unauthorized:chat").toResponse();
   }
 
-  const parsed = requestSchema.safeParse(await request.json().catch(() => null));
+  const parsed = requestSchema.safeParse(
+    await request.json().catch(() => null)
+  );
   if (!parsed.success) {
     return new ChatbotError("bad_request:api").toResponse();
   }
