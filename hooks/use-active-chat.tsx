@@ -42,6 +42,7 @@ type ActiveChatContextValue = {
   visibilityType: VisibilityType;
   isReadonly: boolean;
   isLoading: boolean;
+  isIncognito: boolean;
   votes: Vote[] | undefined;
   currentModelId: string;
   setCurrentModelId: (id: string) => void;
@@ -61,7 +62,8 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
   const { setDataStream, setWaitingStatus } = useDataStream();
   const { mutate } = useSWRConfig();
 
-  const chatIdFromUrl = extractChatId(pathname);
+  const isIncognito = pathname === "/incognito";
+  const chatIdFromUrl = isIncognito ? null : extractChatId(pathname);
   const isNewChat = !chatIdFromUrl;
   const newChatIdRef = useRef(generateUUID());
   const prevPathnameRef = useRef(pathname);
@@ -83,7 +85,7 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
   const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
 
   const { data: chatData, isLoading } = useSWR(
-    isNewChat
+    isNewChat || isIncognito
       ? null
       : `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/messages?chatId=${chatId}`,
     fetcher,
@@ -130,7 +132,9 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       }
     },
     onFinish: () => {
-      mutate(unstable_serialize(getChatHistoryPaginationKey));
+      if (!isIncognito) {
+        mutate(unstable_serialize(getChatHistoryPaginationKey));
+      }
     },
     sendAutomaticallyWhen: ({ messages: currentMessages }) => {
       const lastMessage = currentMessages.at(-1);
@@ -163,9 +167,10 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
         return {
           body: {
             id: request.id,
-            ...(isToolApprovalContinuation
+            ...(isToolApprovalContinuation || isIncognito
               ? { messages: request.messages }
               : { message: lastMessage }),
+            incognito: isIncognito,
             selectedChatModel: currentModelIdRef.current,
             selectedVisibilityType: visibility,
             ...request.body,
@@ -228,17 +233,19 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       window.history.replaceState(
         {},
         "",
-        `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/chat/${chatId}`
+        isIncognito
+          ? `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/incognito`
+          : `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/chat/${chatId}`
       );
       sendMessage({
         parts: [{ text: query, type: "text" }],
         role: "user" as const,
       });
     }
-  }, [sendMessage, chatId]);
+  }, [sendMessage, chatId, isIncognito]);
 
   useAutoResume({
-    autoResume: !isNewChat && !!chatData,
+    autoResume: !isNewChat && !isIncognito && !!chatData,
     initialMessages,
     resumeStream,
     setMessages,
@@ -247,7 +254,7 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
   const isReadonly = isNewChat ? false : (chatData?.isReadonly ?? false);
 
   const { data: votes } = useSWR<Vote[]>(
-    !isReadonly && messages.length >= 2
+    !isIncognito && !isReadonly && messages.length >= 2
       ? `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/vote?chatId=${chatId}`
       : null,
     fetcher,
@@ -260,6 +267,7 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       chatId,
       currentModelId,
       input,
+      isIncognito,
       isLoading: !isNewChat && isLoading,
       isReadonly,
       messages,
@@ -287,6 +295,7 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       input,
       visibility,
       isReadonly,
+      isIncognito,
       isNewChat,
       isLoading,
       votes,
