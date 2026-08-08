@@ -72,17 +72,21 @@ export function ToolsWorkspace() {
     }
   }, [filename, format, instructions]);
 
-  const handleFormatClick = useCallback((event: MouseEvent<HTMLButtonElement>) => {
-    const next = event.currentTarget.dataset.format as FileFormat | undefined;
-    if (!next) {
-      return;
-    }
-    setFormat(next);
-    setFilename((current) => {
-      const base = current.replace(/\.(docx|xlsx|pptx|pdf)$/i, "") || "output";
-      return `${base}.${next}`;
-    });
-  }, []);
+  const handleFormatClick = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      const next = event.currentTarget.dataset.format as FileFormat | undefined;
+      if (!next) {
+        return;
+      }
+      setFormat(next);
+      setFilename((current) => {
+        const base =
+          current.replace(/\.(docx|xlsx|pptx|pdf)$/i, "") || "output";
+        return `${base}.${next}`;
+      });
+    },
+    []
+  );
 
   const handleCodeChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -112,8 +116,8 @@ export function ToolsWorkspace() {
         <h1 className="mt-1 font-semibold text-2xl tracking-tight">Tools</h1>
         <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
           Use the isolated Onyx Code Interpreter directly or generate real
-          Office/PDF files without waiting for the model to decide which tool
-          to call.
+          Office/PDF files without waiting for the model to decide which tool to
+          call.
         </p>
       </div>
 
