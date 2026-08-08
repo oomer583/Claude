@@ -120,9 +120,9 @@ export function UsageAndPromo() {
     try {
       const response = await fetch("/api/account", { method: "DELETE" });
       if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as
-          | { error?: string }
-          | null;
+        const body = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
         toast.error(body?.error ?? "Could not delete the account");
         return;
       }
@@ -256,7 +256,12 @@ export function UsageAndPromo() {
           messages, documents, suggestions, plan information, and redemption
           timestamps. Secrets and API credentials are never included.
         </p>
-        <Button className="mt-4" onClick={exportData} type="button" variant="outline">
+        <Button
+          className="mt-4"
+          onClick={exportData}
+          type="button"
+          variant="outline"
+        >
           Export my data
         </Button>
       </section>
