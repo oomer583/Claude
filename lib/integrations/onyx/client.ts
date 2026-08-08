@@ -2,26 +2,29 @@ import "server-only";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
+type OnyxErrorCode =
+  | "UNAUTHORIZED"
+  | "FORBIDDEN"
+  | "NOT_FOUND"
+  | "RATE_LIMITED"
+  | "TIMEOUT"
+  | "BAD_RESPONSE"
+  | "UPSTREAM_ERROR";
+
+type OnyxErrorOptions = ErrorOptions & {
+  code: OnyxErrorCode;
+  status?: number;
+};
+
 export class OnyxError extends Error {
   readonly status?: number;
-  readonly code:
-    | "UNAUTHORIZED"
-    | "FORBIDDEN"
-    | "NOT_FOUND"
-    | "RATE_LIMITED"
-    | "TIMEOUT"
-    | "BAD_RESPONSE"
-    | "UPSTREAM_ERROR";
+  readonly code: OnyxErrorCode;
 
-  constructor(
-    code: OnyxError["code"],
-    message: string,
-    options?: { cause?: unknown; status?: number }
-  ) {
-    super(message, { cause: options?.cause });
+  constructor(message: string, options: OnyxErrorOptions) {
+    super(message, options);
     this.name = "OnyxError";
-    this.code = code;
-    this.status = options?.status;
+    this.code = options.code;
+    this.status = options.status;
   }
 }
 
@@ -33,7 +36,7 @@ function baseUrl() {
   return value.replace(/\/$/, "");
 }
 
-function mapStatus(status: number): OnyxError["code"] {
+function mapStatus(status: number): OnyxErrorCode {
   if (status === 401) {
     return "UNAUTHORIZED";
   }
@@ -80,9 +83,8 @@ export async function onyxRequest<T>({
     if (!response.ok) {
       const detail = await response.text().catch(() => "");
       throw new OnyxError(
-        mapStatus(response.status),
         `Onyx request failed (${response.status})${detail ? `: ${detail}` : ""}`,
-        { status: response.status }
+        { code: mapStatus(response.status), status: response.status }
       );
     }
 
@@ -93,8 +95,9 @@ export async function onyxRequest<T>({
     try {
       return (await response.json()) as T;
     } catch (error) {
-      throw new OnyxError("BAD_RESPONSE", "Onyx returned invalid JSON", {
+      throw new OnyxError("Onyx returned invalid JSON", {
         cause: error,
+        code: "BAD_RESPONSE",
         status: response.status,
       });
     }
@@ -103,10 +106,14 @@ export async function onyxRequest<T>({
       throw error;
     }
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new OnyxError("TIMEOUT", "Onyx request timed out", { cause: error });
+      throw new OnyxError("Onyx request timed out", {
+        cause: error,
+        code: "TIMEOUT",
+      });
     }
-    throw new OnyxError("UPSTREAM_ERROR", "Onyx request failed", {
+    throw new OnyxError("Onyx request failed", {
       cause: error,
+      code: "UPSTREAM_ERROR",
     });
   } finally {
     clearTimeout(timeout);
