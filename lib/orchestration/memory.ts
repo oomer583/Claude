@@ -4,6 +4,7 @@ import { getOrCreateOnyxCredential } from "@/lib/db/projects";
 import {
   captureOnyxMemory,
   getOnyxPersonalization,
+  updateOnyxPersonalization,
 } from "@/lib/integrations/onyx/memory";
 
 export async function getUserMemoryContext(userId: string) {
@@ -48,4 +49,29 @@ export async function rememberUserFact({
     bearerToken: credential.bearerToken,
     memory,
   });
+}
+
+export async function forgetUserFact({
+  memory,
+  userId,
+}: {
+  memory: string;
+  userId: string;
+}) {
+  const credential = await getOrCreateOnyxCredential(userId);
+  const personalization = await getOnyxPersonalization(credential.bearerToken);
+  const target = memory.trim().toLocaleLowerCase();
+  const memories = personalization.memories.filter(
+    (item) => item.content.trim().toLocaleLowerCase() !== target
+  );
+
+  if (memories.length === personalization.memories.length) {
+    return false;
+  }
+
+  await updateOnyxPersonalization({
+    bearerToken: credential.bearerToken,
+    personalization: { memories },
+  });
+  return true;
 }

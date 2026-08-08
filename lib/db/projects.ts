@@ -4,7 +4,10 @@ import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { provisionOnyxCredential } from "@/lib/integrations/onyx/identity";
-import { createOnyxProject } from "@/lib/integrations/onyx/projects";
+import {
+  createOnyxProject,
+  deleteOnyxProject,
+} from "@/lib/integrations/onyx/projects";
 import { decryptSecret, encryptSecret } from "@/lib/security/encryption";
 import { onyxIdentity, project } from "./schema";
 
@@ -90,4 +93,30 @@ export async function createProjectForUser({
     .returning();
 
   return created;
+}
+
+export async function deleteProjectForUser({
+  id,
+  userId,
+}: {
+  id: string;
+  userId: string;
+}) {
+  const existing = await getProjectByIdForUser({ id, userId });
+  if (!existing) {
+    return false;
+  }
+
+  const credential = await getOrCreateOnyxCredential(userId);
+  await deleteOnyxProject({
+    bearerToken: credential.bearerToken,
+    projectId: existing.onyxProjectId,
+  });
+
+  const deleted = await db
+    .delete(project)
+    .where(and(eq(project.id, id), eq(project.userId, userId)))
+    .returning({ id: project.id });
+
+  return deleted.length === 1;
 }
