@@ -103,7 +103,7 @@ export function SidebarUserNav({ user }: { user: User }) {
             data-testid="user-nav-menu"
             side="top"
           >
-            {!isGuest ? (
+            {isGuest ? null : (
               <DropdownMenuItem
                 className="cursor-pointer text-[13px]"
                 onSelect={handleSettingsClick}
@@ -111,8 +111,8 @@ export function SidebarUserNav({ user }: { user: User }) {
                 <SettingsIcon className="size-3.5" />
                 Plan & usage
               </DropdownMenuItem>
-            ) : null}
-            {!isGuest ? <DropdownMenuSeparator /> : null}
+            )}
+            {isGuest ? null : <DropdownMenuSeparator />}
             <DropdownMenuItem
               className="cursor-pointer text-[13px]"
               data-testid="user-nav-item-theme"
