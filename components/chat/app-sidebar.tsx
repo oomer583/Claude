@@ -74,6 +74,22 @@ export function AppSidebar({ user }: { user: User | undefined }) {
     navigate("/");
   }, [navigate]);
 
+  const handleIncognito = useCallback(() => {
+    navigate("/incognito");
+  }, [navigate]);
+
+  const handleProjects = useCallback(() => {
+    navigate("/projects");
+  }, [navigate]);
+
+  const handleConnectors = useCallback(() => {
+    navigate("/connectors");
+  }, [navigate]);
+
+  const handleTools = useCallback(() => {
+    navigate("/tools");
+  }, [navigate]);
+
   const handleShowDeleteAllDialog = useCallback(() => {
     setShowDeleteAllDialog(true);
   }, []);
@@ -144,7 +160,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton
-                    onClick={() => navigate("/incognito")}
+                    onClick={handleIncognito}
                     tooltip="Incognito chat"
                   >
                     <EyeOffIcon className="size-4" />
@@ -155,7 +171,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                   <>
                     <SidebarMenuItem>
                       <SidebarMenuButton
-                        onClick={() => navigate("/projects")}
+                        onClick={handleProjects}
                         tooltip="Projects"
                       >
                         <FolderKanbanIcon className="size-4" />
@@ -164,7 +180,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                     </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton
-                        onClick={() => navigate("/connectors")}
+                        onClick={handleConnectors}
                         tooltip="Connectors"
                       >
                         <PlugIcon className="size-4" />
@@ -173,7 +189,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                     </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton
-                        onClick={() => navigate("/tools")}
+                        onClick={handleTools}
                         tooltip="Tools"
                       >
                         <WrenchIcon className="size-4" />
