@@ -221,15 +221,20 @@ export async function getQuotaSnapshot(userId: string) {
 
   const redis = await getRedisClient();
   if (!redis && process.env.NODE_ENV === "production") {
-    throw new Error("Quota backend is unavailable: REDIS_URL is not configured");
+    throw new Error(
+      "Quota backend is unavailable: REDIS_URL is not configured"
+    );
   }
 
   const resources = Object.keys(PLAN_QUOTAS[plan]) as QuotaResource[];
   const statuses = await Promise.all(
-    resources.map(async (resource) => [
-      resource,
-      await getResourceStatus({ plan, redis, resource, userId }),
-    ] as const)
+    resources.map(
+      async (resource) =>
+        [
+          resource,
+          await getResourceStatus({ plan, redis, resource, userId }),
+        ] as const
+    )
   );
 
   return {
