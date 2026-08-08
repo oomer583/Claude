@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type ChangeEvent,
+  type KeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
@@ -98,6 +105,28 @@ export function UsageAndPromo() {
     }
   }, [code, loadUsage]);
 
+  const handleCodeChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setCode(event.target.value);
+  }, []);
+
+  const handleCodeKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        redeemPromo().catch(() => {
+          toast.error("Could not redeem the promo code");
+        });
+      }
+    },
+    [redeemPromo]
+  );
+
+  const handleRedeemClick = useCallback(() => {
+    redeemPromo().catch(() => {
+      toast.error("Could not redeem the promo code");
+    });
+  }, [redeemPromo]);
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-5 py-10 md:px-8">
       <div>
@@ -140,7 +169,8 @@ export function UsageAndPromo() {
                   {RESOURCE_LABELS[resource] ?? resource}
                 </p>
                 <p className="mt-1 text-muted-foreground text-xs">
-                  {rule.limit.toLocaleString()} per {formatWindow(rule.windowSeconds)}
+                  {rule.limit.toLocaleString()} per{" "}
+                  {formatWindow(rule.windowSeconds)}
                 </p>
               </div>
             ))}
@@ -159,19 +189,14 @@ export function UsageAndPromo() {
             aria-label="Promo code"
             autoComplete="off"
             className="h-9 min-w-0 flex-1 rounded-lg border border-border bg-background px-3 text-sm outline-none transition focus:border-foreground/30 focus:ring-2 focus:ring-ring/20"
-            onChange={(event) => setCode(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                void redeemPromo();
-              }
-            }}
+            onChange={handleCodeChange}
+            onKeyDown={handleCodeKeyDown}
             placeholder="Enter promo code"
             value={code}
           />
           <Button
             disabled={!code.trim() || isRedeeming}
-            onClick={() => void redeemPromo()}
+            onClick={handleRedeemClick}
             type="button"
           >
             {isRedeeming ? "Applying..." : "Apply code"}
