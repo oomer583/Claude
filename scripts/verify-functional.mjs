@@ -133,7 +133,10 @@ async function verifySearch() {
       method: "POST",
     })
   );
-  assertShape(Array.isArray(body?.sources), "Web search did not return sources");
+  assertShape(
+    Array.isArray(body?.sources),
+    "Web search did not return sources"
+  );
 }
 
 async function verifyCodeExecution() {
@@ -235,7 +238,10 @@ async function verifyWorkspaceLifecycle() {
     "project file list",
     await request(`/api/projects/${project.id}/files`)
   );
-  assertShape(Array.isArray(files) && files.length > 0, "Uploaded file not listed");
+  assertShape(
+    Array.isArray(files) && files.length > 0,
+    "Uploaded file not listed"
+  );
 
   const memoryText = `My temporary verification marker is ${marker}`;
   assertOk(
@@ -304,16 +310,25 @@ function verifyQuotaDeltas(before, after) {
   }
 }
 
+async function consumeResearchQuota(remaining) {
+  if (remaining <= 0) {
+    return;
+  }
+  await verifyResearch();
+  return consumeResearchQuota(remaining - 1);
+}
+
 async function verifyResearchQuota429() {
   const usage = await getUsage();
   if (usage.plan !== "free") {
     throw new Error("E2E_QUOTA_429 requires a disposable free-plan account");
   }
   const remaining = usage.limits?.research?.remaining;
-  assertShape(typeof remaining === "number", "Research remaining quota unavailable");
-  for (let index = 0; index < remaining; index += 1) {
-    await verifyResearch();
-  }
+  assertShape(
+    typeof remaining === "number",
+    "Research remaining quota unavailable"
+  );
+  await consumeResearchQuota(remaining);
   await verifyResearch({ expect429: true });
 }
 
@@ -329,9 +344,15 @@ async function verifyPromo() {
       method: "POST",
     })
   );
-  assertShape(body?.plan === "owner" && body?.redeemed, "Promo did not activate owner plan");
+  assertShape(
+    body?.plan === "owner" && body?.redeemed,
+    "Promo did not activate owner plan"
+  );
   const usage = await getUsage();
-  assertShape(usage.plan === "owner" && usage.limits === null, "Owner quota bypass not active");
+  assertShape(
+    usage.plan === "owner" && usage.limits === null,
+    "Owner quota bypass not active"
+  );
 }
 
 try {
@@ -362,6 +383,8 @@ try {
 
   console.log("Authenticated functional verification passed.");
 } catch (error) {
-  console.error(`FAIL ${error instanceof Error ? error.message : String(error)}`);
+  console.error(
+    `FAIL ${error instanceof Error ? error.message : String(error)}`
+  );
   process.exit(1);
 }
