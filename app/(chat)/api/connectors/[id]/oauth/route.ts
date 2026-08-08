@@ -5,7 +5,12 @@ import { ChatbotError } from "@/lib/errors";
 import { startOnyxMcpOAuth } from "@/lib/integrations/onyx/mcp";
 
 const bodySchema = z.object({
-  returnPath: z.string().trim().startsWith("/").max(500).default("/settings/connectors"),
+  returnPath: z
+    .string()
+    .trim()
+    .startsWith("/")
+    .max(500)
+    .default("/settings/connectors"),
 });
 
 export async function POST(
