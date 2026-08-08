@@ -87,9 +87,12 @@ export function ProjectsWorkspace() {
     }
   }, [files, selectedProjectId]);
 
-  const handleNameChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    setName(event.target.value);
-  }, []);
+  const handleNameChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setName(event.target.value);
+    },
+    []
+  );
 
   const handleInstructionsChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -105,9 +108,12 @@ export function ProjectsWorkspace() {
     []
   );
 
-  const handleFilesChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    setFiles(Array.from(event.target.files ?? []));
-  }, []);
+  const handleFilesChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setFiles(Array.from(event.target.files ?? []));
+    },
+    []
+  );
 
   const handleProjectCardClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
