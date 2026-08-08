@@ -4,9 +4,11 @@ import {
   EyeOffIcon,
   FolderKanbanIcon,
   MessageSquareIcon,
+  PaletteIcon,
   PanelLeftIcon,
   PenSquareIcon,
   PlugIcon,
+  SearchIcon,
   TrashIcon,
   WrenchIcon,
 } from "lucide-react";
@@ -70,25 +72,13 @@ export function AppSidebar({ user }: { user: User | undefined }) {
     [router, setOpenMobile]
   );
 
-  const handleNewChat = useCallback(() => {
-    navigate("/");
-  }, [navigate]);
-
-  const handleIncognito = useCallback(() => {
-    navigate("/incognito");
-  }, [navigate]);
-
-  const handleProjects = useCallback(() => {
-    navigate("/projects");
-  }, [navigate]);
-
-  const handleConnectors = useCallback(() => {
-    navigate("/connectors");
-  }, [navigate]);
-
-  const handleTools = useCallback(() => {
-    navigate("/tools");
-  }, [navigate]);
+  const handleNewChat = useCallback(() => navigate("/"), [navigate]);
+  const handleIncognito = useCallback(() => navigate("/incognito"), [navigate]);
+  const handleProjects = useCallback(() => navigate("/projects"), [navigate]);
+  const handleConnectors = useCallback(() => navigate("/connectors"), [navigate]);
+  const handleTools = useCallback(() => navigate("/tools"), [navigate]);
+  const handleStyles = useCallback(() => navigate("/styles"), [navigate]);
+  const handleHistorySearch = useCallback(() => navigate("/history-search"), [navigate]);
 
   const handleShowDeleteAllDialog = useCallback(() => {
     setShowDeleteAllDialog(true);
@@ -159,10 +149,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton
-                    onClick={handleIncognito}
-                    tooltip="Incognito chat"
-                  >
+                  <SidebarMenuButton onClick={handleIncognito} tooltip="Incognito chat">
                     <EyeOffIcon className="size-4" />
                     <span className="text-[13px]">Incognito</span>
                   </SidebarMenuButton>
@@ -170,19 +157,25 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                 {user ? (
                   <>
                     <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={handleProjects}
-                        tooltip="Projects"
-                      >
+                      <SidebarMenuButton onClick={handleHistorySearch} tooltip="Search chats">
+                        <SearchIcon className="size-4" />
+                        <span className="text-[13px]">Search chats</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton onClick={handleProjects} tooltip="Projects">
                         <FolderKanbanIcon className="size-4" />
                         <span className="text-[13px]">Projects</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={handleConnectors}
-                        tooltip="Connectors"
-                      >
+                      <SidebarMenuButton onClick={handleStyles} tooltip="Custom styles">
+                        <PaletteIcon className="size-4" />
+                        <span className="text-[13px]">Styles</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton onClick={handleConnectors} tooltip="Connectors">
                         <PlugIcon className="size-4" />
                         <span className="text-[13px]">Connectors</span>
                       </SidebarMenuButton>
@@ -216,23 +209,17 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         <SidebarRail />
       </Sidebar>
 
-      <AlertDialog
-        onOpenChange={setShowDeleteAllDialog}
-        open={showDeleteAllDialog}
-      >
+      <AlertDialog onOpenChange={setShowDeleteAllDialog} open={showDeleteAllDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete all chats?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete all
-              your chats and remove them from our servers.
+              This action cannot be undone. This will permanently delete all your chats and remove them from our servers.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteAll}>
-              Delete All
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleDeleteAll}>Delete All</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
