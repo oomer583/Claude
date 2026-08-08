@@ -22,7 +22,9 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const parsed = requestSchema.safeParse(await request.json().catch(() => null));
+  const parsed = requestSchema.safeParse(
+    await request.json().catch(() => null)
+  );
   if (!parsed.success) {
     return Response.json(
       { error: "Invalid file generation request" },
