@@ -1,0 +1,50 @@
+name: Install 9Router provider dependency
+
+on:
+  push:
+    branches:
+      - codex/oss-integration-foundation
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/oss-integration-foundation
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Stop when dependency is already installed
+        id: guard
+        run: |
+          if grep -q '"@ai-sdk/openai-compatible"' package.json; then
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "done=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Add OpenAI-compatible AI SDK provider
+        if: steps.guard.outputs.done != 'true'
+        run: pnpm add @ai-sdk/openai-compatible@^3.0.16
+
+      - name: Commit dependency and lockfile
+        if: steps.guard.outputs.done != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json pnpm-lock.yaml
+          git commit -m "Add OpenAI-compatible provider for 9Router"
+          git push origin HEAD:codex/oss-integration-foundation

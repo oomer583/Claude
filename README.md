@@ -1,55 +1,83 @@
-# AI Çalışma Alanı
+# Claude-like AI Workspace
 
-Claude benzeri bir deneyim sunmayı hedefleyen, sohbeti; proje, dosya ve üretilebilir içerik iş akışlarıyla birleştiren modern bir AI çalışma alanıdır. Bu depo şu anda **planlama ve dokümantasyon aşamasındadır**; henüz uygulama kodu içermez.
+Claude benzeri production AI çalışma alanı. Proje büyük özellikleri sıfırdan yeniden yazmak yerine mevcut açık kaynak sistemleri bridge/adapter katmanlarıyla birleştirir.
 
-## Vizyon
+## Mimari
 
-Kullanıcıların bir AI asistanıyla tek seferlik mesajlaşmanın ötesine geçerek uzun süreli bağlam oluşturabildiği, kaynak dosyalarını düzenleyebildiği ve ortaya çıkan içerikleri canlı olarak inceleyebildiği güvenli bir çalışma ortamı sunmak.
+```text
+Browser
+  |
+  v
+vercel/chatbot tabanlı ana uygulama
+  |
+  +------ server-side ------> 9Router ------> LLM sağlayıcıları
+  |
+  +------ server-side ------> Onyx
+                              |- Projects / RAG
+                              |- File ingestion
+                              |- Web Search
+                              |- Deep Research
+                              |- Memory
+                              |- MCP / Actions
+                              `- Code / generated files
 
-## Planlanan yetenekler
+PostgreSQL -> ürün source of truth
+Redis      -> quota / rate-limit
+```
 
-- Akış destekli AI sohbeti
-- Aranabilir ve kalıcı sohbet geçmişi
-- Sohbetleri, talimatları ve dosyaları bir araya getiren Projects alanı
-- Güvenli dosya yükleme, metin çıkarma ve analiz
-- Artifacts oluşturma, sürümleme ve canlı önizleme
-- Kullanıcı hesabı, oturum ve hesap yönetimi
-- Free ve Pro planlarına göre ölçümlenen kullanım limitleri
-- Aylık Pro aboneliği ve faturalandırma yaşam döngüsü
-- İleriki bir aşamada OpenCode tabanlı, izole çalışan kod ajanı
+Ana bileşenler:
 
-## Planlanan teknoloji yığını
+- `vercel/chatbot`: UI, auth, chat/history, PostgreSQL, streaming ve artifacts.
+- `decolua/9router`: tek model/provider gateway, routing ve fallback.
+- `onyx-dot-app/onyx`: Projects/RAG, dosyalar, Search, Deep Research, Memory, MCP/Actions ve güvenli code/file execution.
+- Redis + `rate-limiter-flexible`: hot-path limitler.
 
-| Katman | Teknoloji |
-| --- | --- |
-| Dil | TypeScript |
-| Web uygulaması | Next.js |
-| API | Fastify |
-| Veritabanı | PostgreSQL |
-| Dağıtım | Docker Compose |
-| AI erişimi | Harici model sağlayıcılarının API'leri |
-
-> Laravel bu projenin teknoloji yığınında yer almaz. Modeller yerel olarak barındırılmayacak; yalnızca sağlayıcı API'leri üzerinden kullanılacaktır.
-
-## Dokümantasyon
-
-- [Ürün tanımı](docs/PRODUCT.md): hedef kitle, kapsam, deneyim ilkeleri ve başarı ölçütleri
-- [Mimari](docs/ARCHITECTURE.md): servis sınırları, veri akışları, güvenlik ve production yaklaşımı
-- [Yol haritası](docs/ROADMAP.md): aşamalar, teslimat ölçütleri ve bağımlılıklar
-- [Katkı ve ajan rehberi](AGENTS.md): depo kuralları ve gelecekteki geliştirme ilkeleri
+Şimdilik Mem0, OpenMeter ve gerçek payment processor bağlanmaz.
 
 ## Mevcut durum
 
-Depoda yalnızca ürün ve teknik planlama belgeleri bulunmaktadır. Kurulum, geliştirme veya çalıştırma komutu henüz yoktur. Uygulama geliştirme başlamadan önce temel kararlar, tehdit modeli ve ilk sürüm kapsamı belgeler üzerinden netleştirilecektir.
+Aktif implementation branch'i: `codex/oss-integration-foundation`.
 
-## Temel ilkeler
+`vercel/chatbot` upstream uygulaması otomatik bootstrap ile bu branch'e import edilmiştir. Kullanılan upstream commit `.upstream-vercel-chatbot` içinde kayıtlıdır. Bundan sonraki çalışma ana uygulamayı 9Router ve Onyx'e bağlayan küçük entegrasyon katmanlarına odaklanır.
 
-1. **Gizlilik ve güvenlik:** Kullanıcı içeriği, kimlik bilgileri ve sağlayıcı anahtarları en az yetki ilkesiyle korunur.
-2. **Sağlayıcı bağımsızlığı:** Ürün katmanı, belirli bir AI sağlayıcısının veri modellerine doğrudan bağlanmaz.
-3. **Ölçülebilir maliyet:** Token, depolama ve işlem tüketimi plan bazında izlenir ve sınırlandırılır.
-4. **Aşamalı teslimat:** Sohbet çekirdeği doğrulanmadan daha karmaşık ajan özelliklerine geçilmez.
-5. **Production odaklılık:** Yerel geliştirme ve production kurulumu tekrar üretilebilir container tanımlarıyla yönetilir.
+## Temel ilke
 
-## Lisans
+> **Ada yapma, köprü yap.**
 
-Henüz bir lisans seçilmemiştir. Lisans belirlenene kadar bu depodaki içeriğin yeniden kullanımı için proje sahiplerinden izin alınmalıdır.
+Aynı işlev seçilen upstream projede zaten varsa yeniden yazılmaz. Upstream davranışı korunur; yalnız entegrasyon, product ownership, güvenlik, entitlement ve kullanıcı deneyimi için özel kod eklenir.
+
+## İlk public production kapsamı
+
+İlk public release tamamlanmadan aşağıdaki çekirdek özellikler fake/mock/placeholder olmadan uçtan uca çalışmalıdır:
+
+- doğal streaming chat
+- uzun document workflow
+- Projects + knowledge + instructions
+- kalıcı memory + chat history
+- artifacts
+- DOCX/XLSX/PPTX/PDF/code dosyası üretme ve düzenleme
+- Web Search + citations
+- Deep Research
+- Extended Thinking
+- MCP/connectors/actions
+- Custom Styles/personas
+- Incognito chat
+- image/document analysis, summarization, writing, brainstorming, translation ve multimodal kullanım
+
+Public MVP/V1/V2 şeklinde eksik çekirdek sürüm yayınlanmaz; geliştirme yalnız içeride fazlara ayrılabilir.
+
+## Geliştirme
+
+Upstream uygulama `pnpm` kullanır. Kurulum için `.env.example` esas alınır; gerçek secret'lar repoya commit edilmez.
+
+```bash
+pnpm install
+pnpm db:migrate
+pnpm dev
+```
+
+Güncel repo kuralları ve mimari öncelikleri için `AGENTS.md` bağlayıcıdır. Eski `docs/ARCHITECTURE.md` / `docs/ROADMAP.md` içindeki sıfırdan Fastify/backend geliştirme yaklaşımı tarihsel planlama materyalidir.
+
+## Lisans disiplini
+
+Yeni dependency eklerken MIT/Apache-2.0/BSD/ISC gibi permissive lisanslar tercih edilir. Onyx özelliklerinde CE/EE sınırı kod seviyesinde doğrulanır; proprietary/EE kod CE gibi kullanılmaz.
