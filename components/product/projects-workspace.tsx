@@ -1,5 +1,6 @@
 "use client";
 
+import type { ChangeEvent, MouseEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,9 @@ export function ProjectsWorkspace() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [name, setName] = useState("");
   const [instructions, setInstructions] = useState("");
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    null
+  );
   const [files, setFiles] = useState<File[]>([]);
   const [isBusy, setIsBusy] = useState(false);
 
@@ -84,6 +87,35 @@ export function ProjectsWorkspace() {
     }
   }, [files, selectedProjectId]);
 
+  const handleNameChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setName(event.target.value);
+  }, []);
+
+  const handleInstructionsChange = useCallback(
+    (event: ChangeEvent<HTMLTextAreaElement>) => {
+      setInstructions(event.target.value);
+    },
+    []
+  );
+
+  const handleProjectChange = useCallback(
+    (event: ChangeEvent<HTMLSelectElement>) => {
+      setSelectedProjectId(event.target.value || null);
+    },
+    []
+  );
+
+  const handleFilesChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setFiles(Array.from(event.target.files ?? []));
+  }, []);
+
+  const handleProjectCardClick = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      setSelectedProjectId(event.currentTarget.dataset.projectId ?? null);
+    },
+    []
+  );
+
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-5 py-10 md:px-8">
       <div>
@@ -101,13 +133,13 @@ export function ProjectsWorkspace() {
           <div className="mt-4 flex flex-col gap-3">
             <input
               className="h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none"
-              onChange={(event) => setName(event.target.value)}
+              onChange={handleNameChange}
               placeholder="Project name"
               value={name}
             />
             <textarea
               className="min-h-28 rounded-lg border border-border bg-background p-3 text-sm outline-none"
-              onChange={(event) => setInstructions(event.target.value)}
+              onChange={handleInstructionsChange}
               placeholder="Project instructions (optional)"
               value={instructions}
             />
@@ -121,7 +153,7 @@ export function ProjectsWorkspace() {
           <h2 className="font-medium text-sm">Project knowledge</h2>
           <select
             className="mt-4 h-9 w-full rounded-lg border border-border bg-background px-3 text-sm"
-            onChange={(event) => setSelectedProjectId(event.target.value || null)}
+            onChange={handleProjectChange}
             value={selectedProjectId ?? ""}
           >
             <option value="">Select a project</option>
@@ -134,7 +166,7 @@ export function ProjectsWorkspace() {
           <input
             className="mt-3 block w-full text-sm"
             multiple
-            onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
+            onChange={handleFilesChange}
             type="file"
           />
           <p className="mt-2 text-muted-foreground text-xs">
@@ -159,8 +191,9 @@ export function ProjectsWorkspace() {
             projects.map((project) => (
               <button
                 className="rounded-xl border border-border/60 bg-muted/20 p-4 text-left transition hover:bg-muted/40"
+                data-project-id={project.id}
                 key={project.id}
-                onClick={() => setSelectedProjectId(project.id)}
+                onClick={handleProjectCardClick}
                 type="button"
               >
                 <p className="font-medium text-sm">{project.name}</p>
