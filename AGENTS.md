@@ -1,64 +1,80 @@
 # AGENTS.md
 
-Bu dosya, bu deponun tamamında çalışan insanlara ve otomasyon ajanlarına yönelik kuralları tanımlar.
+Bu depo Claude benzeri üretim kalitesinde bir AI çalışma alanı geliştirir.
 
-## Proje bağlamı
+## Kaynak mimari
 
-- Ürün, Claude benzeri bir AI çalışma alanıdır.
-- Ana dil TypeScript; frontend Next.js, backend Fastify ve veritabanı PostgreSQL olacaktır.
-- Production dağıtımı Docker Compose ile yapılacaktır.
-- AI modellerine yalnızca harici API'ler üzerinden erişilecektir; model ağırlıkları bu sistemde barındırılmayacaktır.
-- Laravel kullanılmayacaktır.
-- OpenCode tabanlı kod ajanı, çekirdek ürün doğrulandıktan sonraki ayrı bir aşamadır.
+Bu projede büyük özellikler sıfırdan yeniden yazılmaz. Temel ilke: **ada yapma, köprü yap**.
+
+Seçilen ana açık kaynak bileşenler:
+
+- `vercel/chatbot`: ana ürün kabuğu; Next.js UI, auth, chat, PostgreSQL, history, streaming ve artifacts.
+- `decolua/9router`: tek model/provider gateway; OpenAI uyumlu API, routing, fallback ve model kullanım telemetrisi.
+- `onyx-dot-app/onyx`: Projects/RAG, dosya ingestion/indexing, web search, deep research, memory, MCP/actions/connectors, güvenli code/file execution yetenekleri.
+- PostgreSQL: ürün source of truth.
+- Redis + `rate-limiter-flexible`: hızlı kota/rate-limit sayaçları.
+
+Şimdilik **Mem0, OpenMeter ve gerçek payment processor eklenmez**. Ödeme için yalnız gelecekte kullanılabilecek adapter sınırı bırakılır.
+
+## Eski dokümanlarla çakışma
+
+`docs/` altındaki ilk planlarda Next.js + ayrı Fastify API/worker gibi sıfırdan geliştirilecek mimari anlatılabilir. Bu yaklaşım artık bağlayıcı değildir. Mevcut upstream OSS davranışı korunur; yalnız entegrasyon, ürün-spesifik veri sahipliği, güvenlik ve UI uyarlaması için özel kod yazılır.
 
 ## Çalışmaya başlamadan önce
 
-1. `README.md`, `docs/PRODUCT.md`, `docs/ARCHITECTURE.md` ve `docs/ROADMAP.md` dosyalarını okuyun.
-2. Çalışmanın mevcut yol haritasındaki aşama ve kapsamla uyumunu doğrulayın.
-3. Değiştirilecek dizinlerde daha özel bir `AGENTS.md` olup olmadığını kontrol edin; daha derindeki talimatlar önceliklidir.
-4. Belirsiz ürün veya güvenlik kararlarını varsayım olarak koda gömmek yerine belgeleyin.
+1. Mevcut upstream uygulamayı ve ilgili dosyaları inceleyin.
+2. Aynı işlev seçilen OSS projelerden birinde zaten varsa yeniden uygulamayın.
+3. API/request modellerini tahmin etmeyin; güncel upstream kodu/dokümanından doğrulayın.
+4. Onyx CE/EE sınırını her özellik için kontrol edin. EE/proprietary kodu CE gibi kullanmayın.
+5. Değişiklikten sonra lint, typecheck ve ilgili testleri gerçekten çalıştırın; çalışmayan kontrolü başarılı gibi raporlamayın.
 
-## Geliştirme ilkeleri
+## Ana sorumluluk sınırları
 
-- TypeScript için strict mode kullanılmalı; gerekçesiz `any`, görmezden gelinen hata ve doğrulanmamış type assertion eklenmemelidir.
-- Web ve API bağımsız uygulamalar olarak tutulmalı; ortak sözleşmeler açık ve sürümlenebilir olmalıdır.
-- HTTP girdileri, ortam değişkenleri, webhook'lar ve AI sağlayıcı cevapları çalışma zamanında doğrulanmalıdır.
-- İş mantığı framework handler'larına gömülmemeli; test edilebilir servis ve domain sınırlarında tutulmalıdır.
-- Veritabanı değişiklikleri migration ile yapılmalı ve mümkün olduğunda geriye dönük uyumlu olmalıdır.
-- Sağlayıcıya özgü AI ayrıntıları adapter katmanının dışına sızmamalıdır.
-- Yeni bağımlılık eklerken bakım durumu, lisans, güvenlik ve bundle/runtime maliyeti değerlendirilmelidir.
-- Kaynak koduna secret, token, gerçek kullanıcı verisi veya üretim bağlantı bilgisi eklenmemelidir.
+### Ana uygulama (`vercel/chatbot` tabanı)
 
-## Ürün ve güvenlik kuralları
+Sahip olduğu alanlar:
+- kullanıcı ve auth
+- chat/message/history
+- product Project kaydı ve Onyx mapping ID
+- kullanıcı ayarları ve Styles
+- plan/entitlement yapılandırması
+- durable usage accounting
+- artifact UI
 
-- Yetkilendirme, yalnızca arayüzde değil her API ve veri erişimi sınırında uygulanmalıdır.
-- Kullanım limiti kontrolleri yarış koşullarına dayanıklı ve sunucu tarafında olmalıdır.
-- Dosyalar güvenilmeyen girdi kabul edilmeli; tür/boyut doğrulama, zararlı içerik taraması ve izole işleme tasarlanmalıdır.
-- Artifact önizlemeleri ana uygulama origin'inden ayrılmalı ve sıkı sandbox/CSP ile çalıştırılmalıdır.
-- Log'larda mesaj içeriği, dosya içeriği, sağlayıcı anahtarları veya ödeme verileri bulunmamalıdır.
-- Hesap silme, veri saklama ve dışa aktarma davranışları uygulanırken ürün politikasına bağlanmalıdır.
-- Kod ajanı hiçbir zaman uygulama/API container'ında ayrıcalıklı komut çalıştırmamalıdır.
+### 9Router
 
-## Test ve kalite beklentileri
+Yalnız server-side erişilir. Model/provider credential, routing ve fallback 9Router'da kalır. Ürünün hangi modeli hangi kullanıcının görebileceği ana uygulamada kontrol edilir.
 
-- Her davranış değişikliği uygun seviyede otomatik test içermelidir.
-- En azından lint, type-check ve ilgili testler çalıştırılmalı; çalıştırılamayan kontroller nedenleriyle raporlanmalıdır.
-- Kimlik doğrulama, yetkilendirme, kota ve ödeme akışları için negatif senaryolar test edilmelidir.
-- UI değişikliklerinde erişilebilirlik, dar/geniş ekran ve loading/error/empty durumları kontrol edilmelidir.
-- Production yapılandırması değiştiğinde container sağlık kontrolleri, migration ve geri alma yolu doğrulanmalıdır.
+Varsayılan internal base URL yapılandırılabilir olmalıdır:
+`ROUTER_BASE_URL=http://9router:20128/v1`
 
-## Dokümantasyon ve değişiklik disiplini
+### Onyx
 
-- Kapsam veya kullanıcı davranışı değişirse `docs/PRODUCT.md` güncellenmelidir.
-- Servis sınırı, veri modeli, altyapı veya güvenlik kararı değişirse `docs/ARCHITECTURE.md` güncellenmelidir.
-- Teslimat sırası veya kilometre taşı değişirse `docs/ROADMAP.md` güncellenmelidir.
-- Commit'ler küçük, anlamlı ve tek amaçlı olmalıdır. Commit mesajı emir kipinde ve değişikliği açıklayıcı yazılmalıdır.
-- Pull request açıklaması amaç, kapsam, testler, riskler ve varsa migration/geri alma notlarını içermelidir.
+Ayrı servis olarak çalışır; kaynak dosyaları ana uygulamaya kopyalanmaz. Projects/RAG/search/research/memory/MCP/files/code için adapter katmanı üzerinden erişilir. Ana ürün kullanıcısı canonical kimliktir; Onyx auth devre dışı bırakılarak kolay yol seçilmez.
 
-## Yapılmaması gerekenler
+## Kod ilkeleri
 
-- Talep edilmeden mimari yığını değiştirmeyin veya ikinci bir backend framework'ü eklemeyin.
-- API anahtarlarını istemciye göndermeyin.
-- Kullanıcı tarafından sağlanan HTML/JavaScript'i ana uygulama bağlamında çalıştırmayın.
-- Kota ve abonelik durumunu yalnızca istemci tarafındaki verilere göre belirlemeyin.
-- OpenCode entegrasyonunu izolasyon, izin ve denetim tasarımı tamamlanmadan başlatmayın.
+- TypeScript strict mode korunur.
+- Gereksiz `any`, sessiz catch ve doğrulanmamış assertion eklenmez.
+- Secret/API key browser'a gönderilmez.
+- Browser 9Router/Onyx/Redis/Postgres ile doğrudan konuşmaz.
+- Kullanıcı tarafından üretilen kod web process içinde `eval`, `exec` veya izolesiz child process ile çalıştırılmaz.
+- Plan/kota/ownership kontrolleri yalnız UI'da değil server endpoint'lerinde uygulanır.
+- Kullanıcı dosyaları güvenilmeyen girdidir; boyut/tür/ownership kontrolü zorunludur.
+- Incognito chat history ve persistent memory okumaz/yazmaz.
+- Product DB ana source of truth olarak kalır; dış servis ID'leri mapping olarak tutulur.
+
+## Kaynak kısıtları
+
+Hedef fiziksel sunucu küçük tutulmalıdır. Gereksiz servis, duplicate worker veya lokal LLM ağırlığı eklemeyin. Docker log rotation, storage quota ve geçici dosya temizliği production gereksinimidir.
+
+## Git disiplini
+
+- Büyük değişiklikleri doğrudan `main` üzerinde yapmayın.
+- Küçük ve anlamlı commit'ler üretin.
+- Gerekli özelliklerde mock/TODO/placeholder bırakarak production-complete ilan etmeyin.
+- Lisansı bilinmeyen veya AGPL/GPL/network-copyleft yeni bağımlılık eklemeden önce durup raporlayın.
+
+## Public release kuralı
+
+Bu proje public MVP/V1/V2 olarak parçalanmayacaktır. Geliştirme içeride fazlara ayrılabilir ancak ilk public production sürümünde gerekli Claude-benzeri çekirdek işlevlerin tamamı gerçekten çalışmalıdır.
