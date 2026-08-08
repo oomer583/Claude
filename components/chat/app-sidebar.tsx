@@ -1,10 +1,14 @@
 "use client";
 
 import {
+  EyeOffIcon,
+  FolderKanbanIcon,
   MessageSquareIcon,
   PanelLeftIcon,
   PenSquareIcon,
+  PlugIcon,
   TrashIcon,
+  WrenchIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -58,10 +62,33 @@ export function AppSidebar({ user }: { user: User | undefined }) {
     toggleSidebar();
   }, [toggleSidebar]);
 
+  const navigate = useCallback(
+    (path: string) => {
+      setOpenMobile(false);
+      router.push(path);
+    },
+    [router, setOpenMobile]
+  );
+
   const handleNewChat = useCallback(() => {
-    setOpenMobile(false);
-    router.push("/");
-  }, [router, setOpenMobile]);
+    navigate("/");
+  }, [navigate]);
+
+  const handleIncognito = useCallback(() => {
+    navigate("/incognito");
+  }, [navigate]);
+
+  const handleProjects = useCallback(() => {
+    navigate("/projects");
+  }, [navigate]);
+
+  const handleConnectors = useCallback(() => {
+    navigate("/connectors");
+  }, [navigate]);
+
+  const handleTools = useCallback(() => {
+    navigate("/tools");
+  }, [navigate]);
 
   const handleShowDeleteAllDialog = useCallback(() => {
     setShowDeleteAllDialog(true);
@@ -131,17 +158,52 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                     <span className="font-medium">New chat</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={handleIncognito}
+                    tooltip="Incognito chat"
+                  >
+                    <EyeOffIcon className="size-4" />
+                    <span className="text-[13px]">Incognito</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
                 {user ? (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      className="rounded-lg text-sidebar-foreground/40 transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive"
-                      onClick={handleShowDeleteAllDialog}
-                      tooltip="Delete All Chats"
-                    >
-                      <TrashIcon className="size-4" />
-                      <span className="text-[13px]">Delete all</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  <>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={handleProjects}
+                        tooltip="Projects"
+                      >
+                        <FolderKanbanIcon className="size-4" />
+                        <span className="text-[13px]">Projects</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={handleConnectors}
+                        tooltip="Connectors"
+                      >
+                        <PlugIcon className="size-4" />
+                        <span className="text-[13px]">Connectors</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton onClick={handleTools} tooltip="Tools">
+                        <WrenchIcon className="size-4" />
+                        <span className="text-[13px]">Tools</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        className="rounded-lg text-sidebar-foreground/40 transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive"
+                        onClick={handleShowDeleteAllDialog}
+                        tooltip="Delete All Chats"
+                      >
+                        <TrashIcon className="size-4" />
+                        <span className="text-[13px]">Delete all</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </>
                 ) : null}
               </SidebarMenu>
             </SidebarGroupContent>

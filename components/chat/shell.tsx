@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertDialog,
@@ -26,7 +27,10 @@ import { submitEditedMessage } from "./message-editor";
 import { Messages } from "./messages";
 import { MultimodalInput } from "./multimodal-input";
 
+const PRODUCT_PAGES = ["/settings", "/projects", "/connectors", "/tools"];
+
 export function ChatShell() {
+  const pathname = usePathname();
   const {
     chatId,
     messages,
@@ -109,6 +113,10 @@ export function ChatShell() {
     );
     window.location.href = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/`;
   }, []);
+
+  if (PRODUCT_PAGES.some((path) => pathname.startsWith(path))) {
+    return null;
+  }
 
   return (
     <>
