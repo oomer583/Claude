@@ -265,7 +265,9 @@ export function ProjectsWorkspace() {
                     className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2"
                     key={file.id}
                   >
-                    <span className="min-w-0 truncate text-xs">{file.name}</span>
+                    <span className="min-w-0 truncate text-xs">
+                      {file.name}
+                    </span>
                     <span className="shrink-0 text-muted-foreground text-[11px]">
                       {file.status}
                     </span>
