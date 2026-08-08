@@ -27,6 +27,43 @@ export const user = pgTable("User", {
 
 export type User = InferSelectModel<typeof user>;
 
+export const userEntitlement = pgTable("UserEntitlement", {
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  expiresAt: timestamp("expiresAt"),
+  plan: varchar("plan", { enum: ["free", "premium", "owner"] })
+    .notNull()
+    .default("free"),
+  source: varchar("source", { enum: ["default", "promo", "manual", "billing"] })
+    .notNull()
+    .default("default"),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  userId: uuid("userId")
+    .primaryKey()
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+});
+
+export type UserEntitlement = InferSelectModel<typeof userEntitlement>;
+
+export const promoRedemption = pgTable(
+  "PromoRedemption",
+  {
+    codeHash: varchar("codeHash", { length: 64 }).notNull(),
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    redeemedAt: timestamp("redeemedAt").notNull().defaultNow(),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    oneRedemptionPerCode: uniqueIndex(
+      "PromoRedemption_userId_codeHash_unique"
+    ).on(table.userId, table.codeHash),
+  })
+);
+
+export type PromoRedemption = InferSelectModel<typeof promoRedemption>;
+
 export const onyxIdentity = pgTable(
   "OnyxIdentity",
   {
