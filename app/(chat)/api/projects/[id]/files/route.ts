@@ -12,7 +12,7 @@ import {
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const MAX_FILES_PER_REQUEST = 10;
 
-async function resolveProject(id: string, userId: string) {
+function resolveProject(id: string, userId: string) {
   return getProjectByIdForUser({ id, userId });
 }
 
