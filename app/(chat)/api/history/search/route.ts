@@ -13,6 +13,9 @@ export async function GET(request: Request) {
   }
 
   return Response.json(
-    await searchUserChats({ query: query.slice(0, 200), userId: session.user.id })
+    await searchUserChats({
+      query: query.slice(0, 200),
+      userId: session.user.id,
+    })
   );
 }
