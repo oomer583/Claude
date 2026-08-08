@@ -5,28 +5,28 @@ import type { OnyxApiKeyDescriptor, OnyxCredential } from "./types";
 
 /**
  * Provision a BASIC Onyx service account for one product user.
- *
- * IMPORTANT: the returned API key is only returned by Onyx on creation.
- * The caller must persist it encrypted and must never send it to the browser.
+ * The API key is returned by Onyx only once and must be persisted encrypted.
  */
 export async function provisionOnyxCredential(
   productUserId: string
 ): Promise<OnyxCredential & { apiKeyId: number; display: string }> {
   const adminKey = process.env.ONYX_ADMIN_API_KEY?.trim();
   if (!adminKey) {
-    throw new Error("ONYX_ADMIN_API_KEY is required to provision Onyx identities");
+    throw new Error(
+      "ONYX_ADMIN_API_KEY is required to provision Onyx identities"
+    );
   }
 
   const descriptor = await onyxRequest<OnyxApiKeyDescriptor>({
-    path: "/admin/api-key",
     bearerToken: adminKey,
     init: {
-      method: "POST",
       body: JSON.stringify({
         name: `product-user-${productUserId}`,
         role: "basic",
       }),
+      method: "POST",
     },
+    path: "/admin/api-key",
   });
 
   if (!descriptor.api_key) {
