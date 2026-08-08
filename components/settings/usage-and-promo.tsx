@@ -105,9 +105,12 @@ export function UsageAndPromo() {
     }
   }, [code, loadUsage]);
 
-  const handleCodeChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    setCode(event.target.value);
-  }, []);
+  const handleCodeChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setCode(event.target.value);
+    },
+    []
+  );
 
   const handleCodeKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
