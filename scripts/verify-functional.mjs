@@ -97,24 +97,19 @@ async function verifyReadOnlySurfaces() {
     "connector discovery",
     await request("/api/connectors")
   );
-  assertShape(
-    Array.isArray(connectors),
-    "Connectors endpoint did not return an array"
-  );
+  assertShape(Array.isArray(connectors), "Connectors endpoint did not return an array");
   const projects = assertOk("project list", await request("/api/projects"));
-  assertShape(
-    Array.isArray(projects),
-    "Projects endpoint did not return an array"
+  assertShape(Array.isArray(projects), "Projects endpoint did not return an array");
+  const styles = assertOk("style list", await request("/api/styles"));
+  assertShape(Array.isArray(styles), "Styles endpoint did not return an array");
+  const historySearch = assertOk(
+    "past chat search",
+    await request("/api/history/search?q=functional")
   );
+  assertShape(Array.isArray(historySearch), "Chat search endpoint did not return an array");
   const account = assertOk("account export", await request("/api/account"));
-  assertShape(
-    account?.account?.id,
-    "Account export did not include account metadata"
-  );
-  assertShape(
-    !("password" in account.account),
-    "Account export exposed a password field"
-  );
+  assertShape(account?.account?.id, "Account export did not include account metadata");
+  assertShape(!("password" in account.account), "Account export exposed a password field");
   assertShape(
     !account.onyxIdentity || !("encryptedCredential" in account.onyxIdentity),
     "Account export exposed an encrypted credential"
@@ -133,10 +128,7 @@ async function verifySearch() {
       method: "POST",
     })
   );
-  assertShape(
-    Array.isArray(body?.sources),
-    "Web search did not return sources"
-  );
+  assertShape(Array.isArray(body?.sources), "Web search did not return sources");
 }
 
 async function verifyCodeExecution() {
@@ -176,12 +168,37 @@ async function verifyFileGeneration() {
     urls.length > 0,
     "File generation returned no downloadable HTTP(S) URL"
   );
-  const download = await fetch(urls[0], { redirect: "manual" });
+  const download = await fetch(urls[0], { redirect: "follow" });
   assertShape(
     download.status >= 200 && download.status < 400,
     `Generated file URL was not reachable (HTTP ${download.status})`
   );
   console.log(`OK generated file download (${download.status})`);
+  return {
+    blob: await download.blob(),
+    url: urls[0],
+  };
+}
+
+async function verifyFileEditing(generated) {
+  const form = new FormData();
+  form.append("file", generated.blob, "functional-e2e.pdf");
+  form.append(
+    "instructions",
+    "Add the exact text functional-e2e-edited-ok to the existing PDF while preserving the original content."
+  );
+  const body = assertOk(
+    "PDF editing",
+    await request("/api/files/edit", { body: form, method: "POST" })
+  );
+  const urls = extractHttpUrls(body?.answer);
+  assertShape(urls.length > 0, "File editing returned no downloadable HTTP(S) URL");
+  const download = await fetch(urls[0], { redirect: "follow" });
+  assertShape(
+    download.status >= 200 && download.status < 400,
+    `Edited file URL was not reachable (HTTP ${download.status})`
+  );
+  console.log(`OK edited file download (${download.status})`);
 }
 
 async function verifyResearch({ expect429 = false } = {}) {
@@ -238,9 +255,25 @@ async function verifyWorkspaceLifecycle() {
     "project file list",
     await request(`/api/projects/${project.id}/files`)
   );
-  assertShape(
-    Array.isArray(files) && files.length > 0,
-    "Uploaded file not listed"
+  assertShape(Array.isArray(files) && files.length > 0, "Uploaded file not listed");
+
+  const style = assertOk(
+    "style create",
+    await request("/api/styles", {
+      body: JSON.stringify({
+        instructions: `When useful, acknowledge marker ${marker}.`,
+        name: marker,
+      }),
+      method: "POST",
+    })
+  );
+  assertShape(style?.id, "Style creation returned no id");
+  assertOk(
+    "style activate",
+    await request("/api/styles", {
+      body: JSON.stringify({ id: style.id }),
+      method: "PATCH",
+    })
   );
 
   const memoryText = `My temporary verification marker is ${marker}`;
@@ -262,6 +295,13 @@ async function verifyWorkspaceLifecycle() {
     "memory cleanup",
     await request("/api/memories", {
       body: JSON.stringify({ memory: memoryText }),
+      method: "DELETE",
+    })
+  );
+  assertOk(
+    "style cleanup",
+    await request("/api/styles", {
+      body: JSON.stringify({ id: style.id }),
       method: "DELETE",
     })
   );
@@ -302,10 +342,7 @@ function verifyQuotaDeltas(before, after) {
       typeof previous === "number" && typeof current === "number",
       `Missing live quota counters for ${resource}`
     );
-    assertShape(
-      current > previous,
-      `Quota counter did not increase for ${resource}`
-    );
+    assertShape(current > previous, `Quota counter did not increase for ${resource}`);
     console.log(`OK quota counter ${resource}: ${previous} -> ${current}`);
   }
 }
@@ -361,7 +398,8 @@ try {
   if (runActive) {
     await verifySearch();
     await verifyCodeExecution();
-    await verifyFileGeneration();
+    const generated = await verifyFileGeneration();
+    await verifyFileEditing(generated);
     await verifyResearch();
     const after = await getUsage();
     verifyQuotaDeltas(before, after);
