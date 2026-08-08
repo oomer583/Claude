@@ -46,8 +46,6 @@ type ActiveChatContextValue = {
   votes: Vote[] | undefined;
   currentModelId: string;
   setCurrentModelId: (id: string) => void;
-  showCreditCardAlert: boolean;
-  setShowCreditCardAlert: Dispatch<SetStateAction<boolean>>;
 };
 
 const ActiveChatContext = createContext<ActiveChatContextValue | null>(null);
@@ -63,19 +61,73 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
   const { setDataStream, setWaitingStatus } = useDataStream();
   const { mutate } = useSWRConfig();
 
-  const isIncognito = pathname === "/incognito";
-  const projectId = isIncognito ? null : searchParams.get("project");
-  const chatIdFromUrl = isIncognito ? null : extractChatId(pathname);
-  const isNewChat = !chatIdFromUrl;
+  const routeProjectId = searchParams.get("project");
+  const routeProjectName = searchParams.get("projectName");
+  const chatIdFromUrl = extractChatId(pathname);
   const newChatIdRef = useRef(generateUUID());
   const prevPathnameRef = useRef(pathname);
+  const incognitoModeRef = useRef(pathname === "/incognito");
+  const projectIdRef = useRef<string | null>(routeProjectId);
+  const projectNameRef = useRef<string | null>(routeProjectName);
 
-  if (isNewChat && prevPathnameRef.current !== pathname) {
+  const movedToGeneratedChat = chatIdFromUrl === newChatIdRef.current;
+  if (pathname === "/incognito") {
+    incognitoModeRef.current = true;
+    projectIdRef.current = null;
+    projectNameRef.current = null;
+  } else if (pathname === "/") {
+    incognitoModeRef.current = false;
+    projectIdRef.current = routeProjectId;
+    projectNameRef.current = routeProjectName;
+  } else if (chatIdFromUrl && !movedToGeneratedChat) {
+    incognitoModeRef.current = false;
+    projectIdRef.current = routeProjectId;
+    projectNameRef.current = routeProjectName;
+  }
+
+  const isIncognito = incognitoModeRef.current;
+  const projectId = isIncognito ? null : projectIdRef.current;
+  const isNewChat = !chatIdFromUrl || isIncognito;
+
+  if (
+    isNewChat &&
+    prevPathnameRef.current !== pathname &&
+    !movedToGeneratedChat
+  ) {
     newChatIdRef.current = generateUUID();
   }
   prevPathnameRef.current = pathname;
 
-  const chatId = chatIdFromUrl ?? newChatIdRef.current;
+  const chatId = isIncognito
+    ? newChatIdRef.current
+    : (chatIdFromUrl ?? newChatIdRef.current);
+
+  useEffect(() => {
+    if (!(chatIdFromUrl && movedToGeneratedChat)) {
+      return;
+    }
+
+    if (incognitoModeRef.current) {
+      window.history.replaceState(
+        {},
+        "",
+        `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/incognito`
+      );
+      return;
+    }
+
+    if (projectIdRef.current && !searchParams.get("project")) {
+      const params = new URLSearchParams({ project: projectIdRef.current });
+      if (projectNameRef.current) {
+        params.set("projectName", projectNameRef.current);
+      }
+      window.history.replaceState(
+        {},
+        "",
+        `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/chat/${chatId}?${params.toString()}`
+      );
+    }
+  }, [chatId, chatIdFromUrl, movedToGeneratedChat, searchParams]);
 
   const [currentModelId, setCurrentModelId] = useState(DEFAULT_CHAT_MODEL);
   const currentModelIdRef = useRef(currentModelId);
@@ -84,7 +136,6 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
   }, [currentModelId]);
 
   const [input, setInput] = useState("");
-  const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
 
   const { data: chatData, isLoading } = useSWR(
     isNewChat || isIncognito
@@ -122,9 +173,7 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       setDataStream((ds) => (ds ? [...ds, dataPart] : []));
     },
     onError: (error) => {
-      if (error.message?.includes("AI Gateway requires a valid credit card")) {
-        setShowCreditCardAlert(true);
-      } else if (error instanceof ChatbotError) {
+      if (error instanceof ChatbotError) {
         toast({ description: error.message, type: "error" });
       } else {
         toast({
@@ -282,8 +331,6 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       setCurrentModelId,
       setInput,
       setMessages,
-      setShowCreditCardAlert,
-      showCreditCardAlert,
       status,
       stop,
       visibilityType: visibility,
@@ -306,7 +353,6 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       isLoading,
       votes,
       currentModelId,
-      showCreditCardAlert,
     ]
   );
 
