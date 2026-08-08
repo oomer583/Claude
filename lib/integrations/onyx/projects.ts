@@ -38,6 +38,20 @@ export function getOnyxProject({
   });
 }
 
+export function deleteOnyxProject({
+  bearerToken,
+  projectId,
+}: {
+  bearerToken: string;
+  projectId: number;
+}) {
+  return onyxRequest<void>({
+    bearerToken,
+    init: { method: "DELETE" },
+    path: `/user/projects/${projectId}`,
+  });
+}
+
 export function listOnyxProjectFiles({
   bearerToken,
   projectId,
