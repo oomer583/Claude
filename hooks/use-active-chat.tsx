@@ -89,7 +89,11 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
   const projectId = isIncognito ? null : projectIdRef.current;
   const isNewChat = !chatIdFromUrl || isIncognito;
 
-  if (isNewChat && prevPathnameRef.current !== pathname && !movedToGeneratedChat) {
+  if (
+    isNewChat &&
+    prevPathnameRef.current !== pathname &&
+    !movedToGeneratedChat
+  ) {
     newChatIdRef.current = generateUUID();
   }
   prevPathnameRef.current = pathname;
