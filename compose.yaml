@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-claude}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER:-claude}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-claude} -d ${POSTGRES_DB:-claude}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - redis-data:/data
+
+  app:
+    build:
+      context: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      POSTGRES_URL: postgres://${POSTGRES_USER:-claude}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-claude}
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  postgres-data:
+  redis-data:
