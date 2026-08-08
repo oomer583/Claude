@@ -18,10 +18,16 @@ export async function POST(request: Request) {
   const file = form.get("file");
   const instructions = String(form.get("instructions") ?? "").trim();
   if (!(file instanceof File) || !instructions) {
-    return Response.json({ error: "File and instructions are required" }, { status: 400 });
+    return Response.json(
+      { error: "File and instructions are required" },
+      { status: 400 }
+    );
   }
   if (file.size > MAX_FILE_BYTES) {
-    return Response.json({ error: "File exceeds the 25 MB limit" }, { status: 413 });
+    return Response.json(
+      { error: "File exceeds the 25 MB limit" },
+      { status: 413 }
+    );
   }
 
   const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
@@ -37,7 +43,10 @@ export async function POST(request: Request) {
     userId: session.user.id,
   });
   if (!quota.allowed) {
-    return Response.json({ error: "File generation limit reached", quota }, { status: 429 });
+    return Response.json(
+      { error: "File generation limit reached", quota },
+      { status: 429 }
+    );
   }
 
   try {
@@ -56,6 +65,9 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Office/PDF editing failed", error);
-    return Response.json({ error: "File editing service is unavailable" }, { status: 502 });
+    return Response.json(
+      { error: "File editing service is unavailable" },
+      { status: 502 }
+    );
   }
 }
