@@ -19,5 +19,7 @@ export function isOwnerPromoCode(value: string) {
   const candidate = Buffer.from(hashPromoCode(value), "hex");
   const expected = Buffer.from(hashPromoCode(configuredCode), "hex");
 
-  return candidate.length === expected.length && timingSafeEqual(candidate, expected);
+  return (
+    candidate.length === expected.length && timingSafeEqual(candidate, expected)
+  );
 }
