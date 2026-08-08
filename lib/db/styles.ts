@@ -48,7 +48,7 @@ export async function createUserStyle({
   return created;
 }
 
-export async function activateUserStyle({
+export function activateUserStyle({
   id,
   userId,
 }: {
@@ -80,7 +80,7 @@ export async function activateUserStyle({
   });
 }
 
-export async function deleteUserStyle({
+export function deleteUserStyle({
   id,
   userId,
 }: {
