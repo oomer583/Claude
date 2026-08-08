@@ -1,5 +1,6 @@
 "use client";
 
+import type { ChangeEvent, MouseEvent } from "react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,10 @@ export function ToolsWorkspace() {
         headers: { "content-type": "application/json" },
         method: "POST",
       });
-      const body = (await response.json()) as { error?: string; result?: string };
+      const body = (await response.json()) as {
+        error?: string;
+        result?: string;
+      };
       if (!response.ok) {
         toast.error(body.error ?? "Code execution failed");
         return;
@@ -52,7 +56,10 @@ export function ToolsWorkspace() {
         headers: { "content-type": "application/json" },
         method: "POST",
       });
-      const body = (await response.json()) as { answer?: string; error?: string };
+      const body = (await response.json()) as {
+        answer?: string;
+        error?: string;
+      };
       if (!response.ok) {
         toast.error(body.error ?? "File generation failed");
         return;
@@ -65,13 +72,38 @@ export function ToolsWorkspace() {
     }
   }, [filename, format, instructions]);
 
-  const handleFormatChange = useCallback((next: FileFormat) => {
+  const handleFormatClick = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+    const next = event.currentTarget.dataset.format as FileFormat | undefined;
+    if (!next) {
+      return;
+    }
     setFormat(next);
     setFilename((current) => {
       const base = current.replace(/\.(docx|xlsx|pptx|pdf)$/i, "") || "output";
       return `${base}.${next}`;
     });
   }, []);
+
+  const handleCodeChange = useCallback(
+    (event: ChangeEvent<HTMLTextAreaElement>) => {
+      setCode(event.target.value);
+    },
+    []
+  );
+
+  const handleFilenameChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setFilename(event.target.value);
+    },
+    []
+  );
+
+  const handleInstructionsChange = useCallback(
+    (event: ChangeEvent<HTMLTextAreaElement>) => {
+      setInstructions(event.target.value);
+    },
+    []
+  );
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-5 py-10 md:px-8">
@@ -93,7 +125,7 @@ export function ToolsWorkspace() {
           </p>
           <textarea
             className="mt-4 min-h-64 w-full rounded-xl border border-border bg-background p-3 font-mono text-sm outline-none"
-            onChange={(event) => setCode(event.target.value)}
+            onChange={handleCodeChange}
             spellCheck={false}
             value={code}
           />
@@ -119,8 +151,9 @@ export function ToolsWorkspace() {
           <div className="mt-4 grid grid-cols-4 gap-2">
             {(["docx", "xlsx", "pptx", "pdf"] as const).map((value) => (
               <Button
+                data-format={value}
                 key={value}
-                onClick={() => handleFormatChange(value)}
+                onClick={handleFormatClick}
                 size="sm"
                 variant={format === value ? "default" : "outline"}
               >
@@ -130,13 +163,13 @@ export function ToolsWorkspace() {
           </div>
           <input
             className="mt-3 h-9 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none"
-            onChange={(event) => setFilename(event.target.value)}
+            onChange={handleFilenameChange}
             placeholder="Filename"
             value={filename}
           />
           <textarea
             className="mt-3 min-h-44 w-full rounded-xl border border-border bg-background p-3 text-sm outline-none"
-            onChange={(event) => setInstructions(event.target.value)}
+            onChange={handleInstructionsChange}
             placeholder="Describe exactly what the file should contain..."
             value={instructions}
           />
