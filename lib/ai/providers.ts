@@ -5,20 +5,31 @@ import { titleModel } from "./models";
 
 const DEFAULT_ROUTER_BASE_URL = "http://9router:20128/v1";
 
-function getRouterProvider() {
-  const apiKey = process.env.ROUTER_API_KEY;
+function getGatewayConfig() {
+  const apiKey =
+    process.env.MODEL_GATEWAY_API_KEY ??
+    process.env.ROUTER_API_KEY ??
+    "local-test";
+  const baseURL =
+    process.env.MODEL_GATEWAY_BASE_URL ??
+    process.env.ROUTER_BASE_URL ??
+    DEFAULT_ROUTER_BASE_URL;
 
-  if (!apiKey) {
-    throw new Error(
-      "ROUTER_API_KEY is required to access the internal 9Router model gateway."
-    );
-  }
+  return { apiKey, baseURL };
+}
+
+function getRouterProvider() {
+  const { apiKey, baseURL } = getGatewayConfig();
 
   return createOpenAICompatible({
     apiKey,
-    baseURL: process.env.ROUTER_BASE_URL ?? DEFAULT_ROUTER_BASE_URL,
-    name: "9router",
+    baseURL,
+    name: "model-gateway",
   });
+}
+
+function resolveModelId(requestedModelId: string) {
+  return process.env.MODEL_ID?.trim() || requestedModelId;
 }
 
 export const myProvider = isTestEnvironment
@@ -41,7 +52,7 @@ export function getLanguageModel(modelId: string) {
     return myProvider.languageModel(modelId);
   }
 
-  return getRouterProvider().chatModel(modelId);
+  return getRouterProvider().chatModel(resolveModelId(modelId));
 }
 
 export function getTitleModel() {
@@ -49,6 +60,7 @@ export function getTitleModel() {
     return myProvider.languageModel("title-model");
   }
 
-  const routerTitleModel = process.env.ROUTER_TITLE_MODEL ?? titleModel.id;
+  const routerTitleModel =
+    process.env.ROUTER_TITLE_MODEL ?? process.env.MODEL_ID ?? titleModel.id;
   return getRouterProvider().chatModel(routerTitleModel);
 }

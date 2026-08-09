@@ -63,90 +63,118 @@ export const chatModels: ChatModel[] = [
   },
 ];
 
-export async function getCapabilities(): Promise<
-  Record<string, ModelCapabilities>
-> {
-  const results = await Promise.all(
-    chatModels.map(async (model) => {
-      try {
-        const res = await fetch(
-          `https://ai-gateway.vercel.sh/v1/models/${model.id}/endpoints`,
-          { next: { revalidate: 86_400 } }
-        );
-        if (!res.ok) {
-          return [model.id, { reasoning: false, tools: false, vision: false }];
-        }
-
-        const json = await res.json();
-        const endpoints = json.data?.endpoints ?? [];
-        const params = new Set(
-          endpoints.flatMap(
-            (e: { supported_parameters?: string[] }) =>
-              e.supported_parameters ?? []
-          )
-        );
-        const inputModalities = new Set(
-          json.data?.architecture?.input_modalities ?? []
-        );
-
-        return [
-          model.id,
-          {
-            reasoning: params.has("reasoning"),
-            tools: params.has("tools"),
-            vision: inputModalities.has("image"),
-          },
-        ];
-      } catch {
-        return [model.id, { reasoning: false, tools: false, vision: false }];
-      }
-    })
-  );
-
-  return Object.fromEntries(results);
+function getGatewayBaseUrl() {
+  return (
+    process.env.MODEL_GATEWAY_BASE_URL ??
+    process.env.ROUTER_BASE_URL ??
+    "http://9router:20128/v1"
+  ).replace(/\/$/, "");
 }
 
-export const isDemo = process.env.IS_DEMO === "1";
+function getGatewayApiKey() {
+  return (
+    process.env.MODEL_GATEWAY_API_KEY ??
+    process.env.ROUTER_API_KEY ??
+    "local-test"
+  );
+}
 
 type GatewayModel = {
   id: string;
-  name: string;
+  name?: string;
   type?: string;
   tags?: string[];
+  owned_by?: string;
+  supported_parameters?: string[];
+  architecture?: {
+    input_modalities?: string[];
+  };
 };
 
 export type GatewayModelWithCapabilities = ChatModel & {
   capabilities: ModelCapabilities;
 };
 
-export async function getAllGatewayModels(): Promise<
-  GatewayModelWithCapabilities[]
-> {
+function capabilitiesForGatewayModel(model: GatewayModel): ModelCapabilities {
+  const tags = new Set(model.tags ?? []);
+  const params = new Set(model.supported_parameters ?? []);
+  const modalities = new Set(model.architecture?.input_modalities ?? []);
+
+  return {
+    reasoning:
+      tags.has("reasoning") ||
+      params.has("reasoning") ||
+      params.has("reasoning_effort"),
+    tools:
+      tags.has("tool-use") ||
+      tags.has("tools") ||
+      params.has("tools") ||
+      params.has("tool_choice"),
+    vision:
+      tags.has("vision") || modalities.has("image") || params.has("images"),
+  };
+}
+
+async function fetchGatewayModels(): Promise<GatewayModel[]> {
   try {
-    const res = await fetch("https://ai-gateway.vercel.sh/v1/models", {
-      next: { revalidate: 86_400 },
+    const response = await fetch(`${getGatewayBaseUrl()}/models`, {
+      cache: "no-store",
+      headers: {
+        Authorization: `Bearer ${getGatewayApiKey()}`,
+      },
+      signal: AbortSignal.timeout(5000),
     });
-    if (!res.ok) {
+
+    if (!response.ok) {
       return [];
     }
 
-    const json = await res.json();
-    return (json.data ?? [])
-      .filter((m: GatewayModel) => m.type === "language")
-      .map((m: GatewayModel) => ({
-        capabilities: {
-          reasoning: m.tags?.includes("reasoning") ?? false,
-          tools: m.tags?.includes("tool-use") ?? false,
-          vision: m.tags?.includes("vision") ?? false,
-        },
-        description: "",
-        id: m.id,
-        name: m.name,
-        provider: m.id.split("/")[0],
-      }));
+    const json = await response.json();
+    const data = Array.isArray(json?.data) ? json.data : [];
+    return data.filter(
+      (model: GatewayModel) =>
+        typeof model?.id === "string" &&
+        (!model.type || model.type === "language" || model.type === "model")
+    );
   } catch {
     return [];
   }
+}
+
+export async function getCapabilities(): Promise<
+  Record<string, ModelCapabilities>
+> {
+  const gatewayModels = await fetchGatewayModels();
+  const dynamicCapabilities = Object.fromEntries(
+    gatewayModels.map((model) => [model.id, capabilitiesForGatewayModel(model)])
+  );
+
+  return Object.fromEntries(
+    chatModels.map((model) => [
+      model.id,
+      dynamicCapabilities[model.id] ?? {
+        reasoning: Boolean(model.reasoningEffort),
+        tools: false,
+        vision: false,
+      },
+    ])
+  );
+}
+
+export const isDemo = process.env.IS_DEMO === "1";
+
+export async function getAllGatewayModels(): Promise<
+  GatewayModelWithCapabilities[]
+> {
+  const gatewayModels = await fetchGatewayModels();
+
+  return gatewayModels.map((model) => ({
+    capabilities: capabilitiesForGatewayModel(model),
+    description: "Available through the configured model gateway",
+    id: model.id,
+    name: model.name ?? model.id,
+    provider: model.owned_by ?? model.id.split("/")[0] ?? "gateway",
+  }));
 }
 
 export function getActiveModels(): ChatModel[] {
@@ -168,62 +196,17 @@ export const modelsByProvider = chatModels.reduce(
 
 export type ModelAvailability = "healthy" | "impacted" | "unknown";
 
-type GatewayEndpoint = {
-  provider_name?: string;
-  status?: number;
-  uptime_last_15m?: number;
-  uptime_last_1h?: number;
-  latency_last_1h?: {
-    p50?: number;
-    p95?: number;
-  };
-};
-
-const PROVIDER_IMPACTED_UPTIME_THRESHOLD = 99;
-const PROVIDER_IMPACTED_P50_MS = 10_000;
-const PROVIDER_IMPACTED_P95_MS = 30_000;
-
-function isEndpointImpacted(endpoint: GatewayEndpoint) {
-  return (
-    (endpoint.status !== undefined && endpoint.status !== 0) ||
-    (endpoint.uptime_last_15m !== undefined &&
-      endpoint.uptime_last_15m < PROVIDER_IMPACTED_UPTIME_THRESHOLD) ||
-    (endpoint.uptime_last_1h !== undefined &&
-      endpoint.uptime_last_1h < PROVIDER_IMPACTED_UPTIME_THRESHOLD) ||
-    (endpoint.latency_last_1h?.p50 !== undefined &&
-      endpoint.latency_last_1h.p50 > PROVIDER_IMPACTED_P50_MS) ||
-    (endpoint.latency_last_1h?.p95 !== undefined &&
-      endpoint.latency_last_1h.p95 > PROVIDER_IMPACTED_P95_MS)
-  );
-}
-
 export async function getModelAvailability(
   modelId: string
 ): Promise<ModelAvailability> {
-  const model = chatModels.find((item) => item.id === modelId);
+  const effectiveModelId = process.env.MODEL_ID?.trim() || modelId;
+  const gatewayModels = await fetchGatewayModels();
 
-  if (!model) {
+  if (gatewayModels.length === 0) {
     return "unknown";
   }
 
-  try {
-    const res = await fetch(
-      `https://ai-gateway.vercel.sh/v1/models/${model.id}/endpoints`,
-      { next: { revalidate: 60 } }
-    );
-    if (!res.ok) {
-      return "unknown";
-    }
-
-    const json = await res.json();
-    const endpoints = (json.data?.endpoints ?? []) as GatewayEndpoint[];
-
-    if (endpoints.length === 0) {
-      return "unknown";
-    }
-
-    return endpoints.some(isEndpointImpacted) ? "impacted" : "healthy";
-  } catch {
-    return "unknown";
-  }
+  return gatewayModels.some((model) => model.id === effectiveModelId)
+    ? "healthy"
+    : "impacted";
 }
