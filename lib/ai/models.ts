@@ -111,9 +111,7 @@ function capabilitiesForGatewayModel(model: GatewayModel): ModelCapabilities {
       params.has("tools") ||
       params.has("tool_choice"),
     vision:
-      tags.has("vision") ||
-      modalities.has("image") ||
-      params.has("images"),
+      tags.has("vision") || modalities.has("image") || params.has("images"),
   };
 }
 
