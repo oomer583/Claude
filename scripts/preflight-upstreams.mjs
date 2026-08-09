@@ -1,6 +1,8 @@
 const basicChatOnly = process.env.BASIC_CHAT_ONLY === "1";
 const gatewayBase = (
-  process.env.MODEL_GATEWAY_BASE_URL ?? process.env.ROUTER_BASE_URL ?? ""
+  process.env.MODEL_GATEWAY_BASE_URL ??
+  process.env.ROUTER_BASE_URL ??
+  ""
 ).replace(/\/$/, "");
 const gatewayApiKey =
   process.env.MODEL_GATEWAY_API_KEY ?? process.env.ROUTER_API_KEY;
@@ -44,7 +46,9 @@ if (!process.env.MODEL_GATEWAY_BASE_URL && process.env.ROUTER_BASE_URL) {
   await expectOk("9Router health", `${routerRoot}/api/health`);
 }
 
-if (!basicChatOnly) {
+if (basicChatOnly) {
+  console.log("Basic chat preflight passed; Onyx checks were skipped.");
+} else {
   await expectOk("Onyx health", `${onyxBase}/health`);
   await expectOk("Onyx admin authentication", `${onyxBase}/me`, {
     headers: {
@@ -52,6 +56,4 @@ if (!basicChatOnly) {
     },
   });
   console.log("Model gateway and Onyx preflight passed.");
-} else {
-  console.log("Basic chat preflight passed; Onyx checks were skipped.");
 }
