@@ -1,11 +1,21 @@
-const routerBase = process.env.ROUTER_BASE_URL?.replace(/\/$/, "");
-const routerApiKey = process.env.ROUTER_API_KEY;
+const basicChatOnly = process.env.BASIC_CHAT_ONLY === "1";
+const gatewayBase = (
+  process.env.MODEL_GATEWAY_BASE_URL ?? process.env.ROUTER_BASE_URL ?? ""
+).replace(/\/$/, "");
+const gatewayApiKey =
+  process.env.MODEL_GATEWAY_API_KEY ?? process.env.ROUTER_API_KEY;
 const onyxBase = process.env.ONYX_BASE_URL?.replace(/\/$/, "");
 const onyxAdminApiKey = process.env.ONYX_ADMIN_API_KEY;
 
-if (!(routerBase && routerApiKey && onyxBase && onyxAdminApiKey)) {
+if (!(gatewayBase && gatewayApiKey)) {
   throw new Error(
-    "ROUTER_BASE_URL, ROUTER_API_KEY, ONYX_BASE_URL and ONYX_ADMIN_API_KEY are required"
+    "MODEL_GATEWAY_BASE_URL/ROUTER_BASE_URL and MODEL_GATEWAY_API_KEY/ROUTER_API_KEY are required"
+  );
+}
+
+if (!basicChatOnly && !(onyxBase && onyxAdminApiKey)) {
+  throw new Error(
+    "ONYX_BASE_URL and ONYX_ADMIN_API_KEY are required unless BASIC_CHAT_ONLY=1"
   );
 }
 
@@ -23,19 +33,25 @@ async function expectOk(name, url, init = {}) {
   console.log(`${name} OK`);
 }
 
-const routerRoot = routerBase.replace(/\/v1$/, "");
-await expectOk("9Router health", `${routerRoot}/api/health`);
-await expectOk("9Router authenticated models", `${routerBase}/models`, {
+await expectOk("Model gateway authenticated models", `${gatewayBase}/models`, {
   headers: {
-    Authorization: `Bearer ${routerApiKey}`,
+    Authorization: `Bearer ${gatewayApiKey}`,
   },
 });
 
-await expectOk("Onyx health", `${onyxBase}/health`);
-await expectOk("Onyx admin authentication", `${onyxBase}/me`, {
-  headers: {
-    Authorization: `Bearer ${onyxAdminApiKey}`,
-  },
-});
+if (!process.env.MODEL_GATEWAY_BASE_URL && process.env.ROUTER_BASE_URL) {
+  const routerRoot = gatewayBase.replace(/\/v1$/, "");
+  await expectOk("9Router health", `${routerRoot}/api/health`);
+}
 
-console.log("9Router and Onyx preflight passed.");
+if (!basicChatOnly) {
+  await expectOk("Onyx health", `${onyxBase}/health`);
+  await expectOk("Onyx admin authentication", `${onyxBase}/me`, {
+    headers: {
+      Authorization: `Bearer ${onyxAdminApiKey}`,
+    },
+  });
+  console.log("Model gateway and Onyx preflight passed.");
+} else {
+  console.log("Basic chat preflight passed; Onyx checks were skipped.");
+}
