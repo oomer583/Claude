@@ -1,15 +1,28 @@
+const basicChatOnly = process.env.BASIC_CHAT_ONLY === "1";
+const gatewayBase =
+  process.env.MODEL_GATEWAY_BASE_URL ?? process.env.ROUTER_BASE_URL;
+const gatewayApiKey =
+  process.env.MODEL_GATEWAY_API_KEY ?? process.env.ROUTER_API_KEY;
+
 const required = [
   "AUTH_SECRET",
   "APP_ENCRYPTION_KEY",
   "POSTGRES_URL",
   "REDIS_URL",
-  "ROUTER_BASE_URL",
-  "ROUTER_API_KEY",
-  "ONYX_BASE_URL",
-  "ONYX_ADMIN_API_KEY",
 ];
 
+if (!basicChatOnly) {
+  required.push("ONYX_BASE_URL", "ONYX_ADMIN_API_KEY");
+}
+
 const missing = required.filter((name) => !process.env[name]?.trim());
+
+if (!gatewayBase?.trim()) {
+  missing.push("MODEL_GATEWAY_BASE_URL or ROUTER_BASE_URL");
+}
+if (!gatewayApiKey?.trim()) {
+  missing.push("MODEL_GATEWAY_API_KEY or ROUTER_API_KEY");
+}
 
 if (missing.length > 0) {
   console.error(
@@ -18,13 +31,13 @@ if (missing.length > 0) {
   process.exit(1);
 }
 
-for (const name of [
-  "POSTGRES_URL",
-  "REDIS_URL",
-  "ROUTER_BASE_URL",
-  "ONYX_BASE_URL",
+for (const [name, value] of [
+  ["POSTGRES_URL", process.env.POSTGRES_URL],
+  ["REDIS_URL", process.env.REDIS_URL],
+  ["MODEL_GATEWAY_BASE_URL", gatewayBase],
+  ...(basicChatOnly ? [] : [["ONYX_BASE_URL", process.env.ONYX_BASE_URL]]),
 ]) {
-  if (!URL.canParse(process.env[name])) {
+  if (!URL.canParse(value)) {
     console.error(`${name} must be a valid URL`);
     process.exit(1);
   }
@@ -36,4 +49,8 @@ if (encryptionKey.length !== 32) {
   process.exit(1);
 }
 
-console.log("Environment looks ready for deployment.");
+console.log(
+  basicChatOnly
+    ? "Environment looks ready for basic chat testing (Onyx disabled)."
+    : "Environment looks ready for deployment."
+);
