@@ -7,7 +7,9 @@ const DEFAULT_ROUTER_BASE_URL = "http://9router:20128/v1";
 
 function getGatewayConfig() {
   const apiKey =
-    process.env.MODEL_GATEWAY_API_KEY ?? process.env.ROUTER_API_KEY ?? "local-test";
+    process.env.MODEL_GATEWAY_API_KEY ??
+    process.env.ROUTER_API_KEY ??
+    "local-test";
   const baseURL =
     process.env.MODEL_GATEWAY_BASE_URL ??
     process.env.ROUTER_BASE_URL ??
